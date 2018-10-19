@@ -72,10 +72,10 @@ function DCM = spm_dcm_post_hoc(P,fun,field,write_all)
 %
 % See also: spm_dcm_search
 %__________________________________________________________________________
-% Copyright (C) 2010-2014 Wellcome Trust Centre for Neuroimaging
+% Copyright (C) 2010-2015 Wellcome Trust Centre for Neuroimaging
 
 % Karl Friston, Peter Zeidman
-% $Id: spm_dcm_post_hoc.m 6192 2014-09-23 17:35:00Z peter $
+% $Id: spm_dcm_post_hoc.m 6724 2016-02-19 19:13:07Z karl $
 
 
 %-Number of parameters to consider before invoking greedy search
@@ -126,43 +126,49 @@ params.N         = numel(params.P);     % Number of input models
 params.nograph   = spm('CmdLine');      % Graphical display
 
 %-Run post-hoc DCM
-%--------------------------------------------------------------------------
+%==========================================================================
 
 % Check that models are compatible in terms of their prior variances
-[example_DCM,C] = check_models(params);
+%--------------------------------------------------------------------------
+[example_DCM, C] = check_models(params);
 
 % Greedy search (GS) - eliminating parameters in a top down fashion
-[C,model_space] = greedy_search(C,example_DCM,nmax,params);
+%--------------------------------------------------------------------------
+[C, model_space] = greedy_search(C, example_DCM, nmax, params);
 
 % Inference over families
-[Pk, Pf] = family_inference(example_DCM,C,model_space,params);
+%--------------------------------------------------------------------------
+[Pk, Pf] = family_inference(example_DCM, C, model_space, params);
 
 % Calculate reduced models and BPA
-[BPA, P_opt] = compute_post_hoc(example_DCM,C,params);
+%--------------------------------------------------------------------------
+[BPA, P_opt] = compute_post_hoc(example_DCM, C, params);
 
 % Show full and reduced conditional estimates (for Bayesian average)
+%--------------------------------------------------------------------------
 if ~params.nograph
-    create_plots(example_DCM,BPA,Pk,Pf,params,~nargout);
+    create_plots(example_DCM, BPA, Pk, Pf, params, ~nargout);
 end
 
 % Save Bayesian Parameter Average and family-wise model inference
-DCM = save_bpa_dcm(Pk,BPA,Pf,params,P_opt);
+%--------------------------------------------------------------------------
+DCM = save_bpa_dcm(Pk, BPA, Pf, params, P_opt);
 
 
 %==========================================================================
 function [example_DCM,C] = check_models(params)
 % Check that models are compatible in terms of their prior variances
-%
+%--------------------------------------------------------------------------
 % params      - user supplied parameters
-%
 % example_DCM - an example model
 % C           - binarized prior variance vector of an example model
 
 for j = 1:params.N
+    
     % Get prior covariances
     %----------------------------------------------------------------------
-    try, DCM=load(params.P{j}); DCM=DCM.DCM; catch, DCM = params.P{j}; end
-    try, pC = diag(DCM.M.pC); catch, pC  = spm_vec(DCM.M.pC); end
+    try, DCM = load(params.P{j}); DCM = DCM.DCM; catch, DCM = params.P{j}; end
+    try, pC  = diag(DCM.M.pC); catch, pC  = spm_vec(DCM.M.pC); end
     
     % and compare it with the first model
     %----------------------------------------------------------------------
@@ -176,14 +182,13 @@ for j = 1:params.N
 end
 
 example_DCM = DCM;
-
-C = logical(C);
+C    = logical(C);
 
 
 %==========================================================================
 function [C,model_space] = greedy_search(C,DCM,nmax,params)
 % Perform a greedy search to reduce the number of free parameters in C
-%
+%--------------------------------------------------------------------------
 % A model space is created, K, each row indicates which free
 % parameters to disable. (If there are more than nmax free
 % parameters, K will just include combinations of the 8 parameters
@@ -204,10 +209,15 @@ function [C,model_space] = greedy_search(C,DCM,nmax,params)
 GS = 1;
 while GS
     
-    %-Find free coupling parameters
+    %-Find free parameters
     %----------------------------------------------------------------------
-    k = spm_fieldindices(DCM.Ep,params.field{:});
-    k = k(C(k));
+    if isstruct(DCM.Ep)
+        k = spm_fieldindices(DCM.Ep,params.field{:});
+    else
+        k = 1:spm_length(DCM.Ep);
+    end
+
+    k      = k(C(k));
     nparam = length(k);
     
     %-If there are too many params find those with the least evidence
@@ -218,7 +228,7 @@ while GS
         % Flag a greedy search
         GS = 1;
     elseif isempty(k)
-        error('There are no free parameters in this model');
+        error('There are no free parameters in this model.');
     else
         GS = 0;
     end
@@ -234,24 +244,25 @@ while GS
     %-Show results
     %----------------------------------------------------------------------
     if ~params.nograph
-        spm_figure('Getwin','Graphics'); clf
+        Fgraph = spm_figure('Getwin','Graphics');
+        spm_figure('Clear',Fgraph);
         fprintf('%i out of %i free parameters removed \n',nelim,nparam)
         
-        subplot(3,2,1)
+        ax = subplot(3,2,1,'Parent',Fgraph);
         if length(model_space.K) > 32, plot(model_space.S,'k'),...
         else bar(model_space.S,'c'), end
-        title('log-posterior','FontSize',16)
-        xlabel('model','FontSize',12)
-        ylabel('log-probability','FontSize',12)
-        axis square
+        title(ax,'log-posterior','FontSize',16)
+        xlabel(ax,'model','FontSize',12)
+        ylabel(ax,'log-probability','FontSize',12)
+        axis(ax,'square');
     
-        subplot(3,2,2)
+        ax = subplot(3,2,2,'Parent',Fgraph);
         if length(model_space.K) > 32, plot(model_space.p,'k'),...
         else bar(model_space.p,'r'), end
-        title('model posterior','FontSize',16)
-        xlabel('model','FontSize',12)
-        ylabel('probability','FontSize',12)
-        axis square
+        title(ax,'model posterior','FontSize',16)
+        xlabel(ax,'model','FontSize',12)
+        ylabel(ax,'probability','FontSize',12)
+        axis(ax,'square');
         drawnow
     end
 
@@ -336,16 +347,15 @@ p     = p/sum(p);
 C(k(K(i,:))) = 0;
 
 % Number of eliminated parameters
-nelim  = full(sum(K(i,:)));
-
-% Results to return
+%--------------------------------------------------------------------------
+nelim       = full(sum(K(i,:)));
 model_space = struct('K',K, 'k',k, 'S',S, 'p',p);
 
 
 %==========================================================================
 function k = identify_parameters_with_least_evidence(k,C,params)
 % Identify the 8 parameters with the least evidence
-%
+%--------------------------------------------------------------------------
 % k      - Updated indices of free parameters (with least evidence)
 % C      - Binary vector of all parameters (1=free)
 % params - User supplied parameters
@@ -399,7 +409,7 @@ k          = k(i(1:8));
 %==========================================================================
 function [Pk, Pf] = family_inference(DCM,C,model_space,params)
 % Perform family level inference
-%
+%--------------------------------------------------------------------------
 % DCM             - example DCM structure
 % C               - binary vector of all free parameters
 % model_space.K   - model space
@@ -456,7 +466,7 @@ end
 function [BPA,P_opt] = compute_post_hoc(DCM,C,params)
 % For each model, create reduced model (DCM_opt*.mat) and collate data
 % for bayesian parameter average (CQ,Cq,EQ,Eq).
-%
+%--------------------------------------------------------------------------
 % DCM    - template DCM structure
 % C      - binary vector of parameters
 % params - User supplied parameters
@@ -575,14 +585,10 @@ end
 %--------------------------------------------------------------------------
 if isstruct(pC), pC = diag(spm_vec(pC)); end
 
-N = params.N;
-
-ipC = spm_inv(pC);                         % prior precision (full)
-irC = spm_inv(rC);                         % prior precision (reduced)
-CQ  = spm_inv(PQ + (1 - N)*ipC,params.TOL);       % post covariance (full)
-Cq  = spm_inv(Pq + (1 - N)*irC,params.TOL);       % post covariance (reduced)
-EQ  = CQ*(EQ - (N - 1)*ipC*spm_vec(pE));   % post mean (full)
-Eq  = Cq*(Eq - (N - 1)*irC*spm_vec(pE));   % post mean (reduced)
+CQ  = spm_inv(PQ,params.TOL);              % post covariance (full)
+Cq  = spm_inv(Pq,params.TOL);              % post covariance (reduced)
+EQ  = CQ*EQ;                               % post mean (full)
+Eq  = Cq*Eq;                               % post mean (reduced)
 EQ  = spm_unvec(EQ,pE);
 Eq  = spm_unvec(Eq,pE);
 
@@ -595,7 +601,7 @@ BPA.EQ = EQ; BPA.Eq = Eq;
 %==========================================================================
 function create_plots(DCM,BPA,Pk,Pf,params,extra_plots)
 % Plot results
-%
+%--------------------------------------------------------------------------
 % DCM         - Template DCM structure
 % BPA.CQ      - BPA posterior covariance (full)
 % BPA.Cq      - BPA posterior covariance (reduced)
@@ -606,42 +612,47 @@ function create_plots(DCM,BPA,Pk,Pf,params,extra_plots)
 % params      - User supplied parameters
 % extra_plots - additional plots if there are no output arguments
 
-pE = DCM.M.pE;
 
-i   = spm_fieldindices(DCM.Ep,'A','B','C');
+
+if isstruct(DCM.Ep)
+    i = spm_fieldindices(DCM.Ep,'A','B','C');
+else
+    i = 1:spm_length(DCM.Ep);
+end
+
+pE  = DCM.M.pE;
 pE  = spm_vec(pE);
 EP  = spm_vec(BPA.EQ);
 Ep  = spm_vec(BPA.Eq);
 
 %-Plot summary of results
 %--------------------------------------------------------------------------
-spm_figure('GetWin','Graphics');
+Fgraph = spm_figure('GetWin','Graphics');
 
-subplot(3,2,3)
-spm_plot_ci(EP(i),BPA.CQ(i,i))
-title('MAP connections (full)','FontSize',16)
-axis square
-a   = axis;
+ax = subplot(3,2,3,'Parent',Fgraph);
+spm_plot_ci(EP(i),BPA.CQ(i,i));
+title(ax,'MAP connections (full)','FontSize',16);
+axis(ax,'square');
 
-subplot(3,2,4)
-spm_plot_ci(Ep(i),abs(BPA.Cq(i,i)))
-title('MAP connections (reduced)','FontSize',16)
-axis square
-axis(a)
+ax = subplot(3,2,4,'Parent',Fgraph);
+spm_plot_ci(Ep(i),abs(BPA.Cq(i,i)));
+title(ax,'MAP connections (reduced)','FontSize',16);
+axis(ax,'square');
 
-subplot(3,2,5)
-bar(EP(i) - pE(i))
-xlabel('parameter')
-title('MAP minus prior','FontSize',16)
-spm_axis tight
-axis square
+ax = subplot(3,2,5,'Parent',Fgraph);
+bar(ax,EP(i) - pE(i));
+xlabel(ax,'parameter');
+title(ax,'MAP minus prior','FontSize',16);
+spm_axis(ax,'tight');
+axis(ax,'square');
 
-subplot(3,2,6)
-bar(Ep(i) - EP(i))
-xlabel('parameter')
-title('differences in MAP','FontSize',16)
-spm_axis tight
-axis square
+ax = subplot(3,2,6,'Parent',Fgraph);
+bar(ax,Ep(i) - EP(i));
+xlabel(ax,'parameter');
+title(ax,'differences in MAP','FontSize',16);
+spm_axis(ax,'tight');
+axis(ax,'square');
+
 drawnow
 
 %-Stop this function here if we only need basic plots
@@ -652,24 +663,29 @@ end
 
 %-Show structural and functional graphs
 %--------------------------------------------------------------------------
-spm_figure('GetWin','Graph analysis'); clf
+F = spm_figure('GetWin','Graph analysis');
+spm_figure('Clear',F);
 try
     spm_dcm_graph(DCM.xY,BPA.Eq.A);
 catch
     try
         spm_dcm_graph(DCM,BPA.Eq.A);
+    catch
+        delete(F);
     end
 end
 
 %-Show coupling matrices
 %--------------------------------------------------------------------------
-if numel(params.field) == 3;
+if numel(params.field) == 3 && isfield(DCM,'a')
     
-    spm_figure('GetWin','Bayesian parameter average (selected model)'); clf
-    spm_dcm_fmri_image(BPA.Eq)
+    F = spm_figure('GetWin','Bayesian parameter average (selected model)');
+    spm_figure('Clear',F);
+    spm_dcm_fmri_image(BPA.Eq);
     
-    spm_figure('GetWin','Model posterior (over parameters)'); clf
-    spm_dcm_fmri_image(Pk)
+    F = spm_figure('GetWin','Model posterior (over parameters)');
+    spm_figure('Clear',F);
+    spm_dcm_fmri_image(Pk);
     
 end
 
@@ -677,19 +693,20 @@ end
 %--------------------------------------------------------------------------
 if ~isempty(params.fun)
     
-    spm_figure('GetWin','Model posterior (over families)'); clf
-    subplot(2,1,1)
-    bar(Pf)
-    xlabel('familiy')
-    title('Model posterior (over families)','FontSize',16)
-    axis square
+    F = spm_figure('GetWin','Model posterior (over families)');
+    ax = subplot(2,1,1,'Parent',F);
+    bar(ax,Pf);
+    xlabel(ax,'family');
+    title(ax,'Model posterior (over families)','FontSize',16);
+    axis(ax,'square');
+    
 end
 
 
 %==========================================================================
 function DCM = save_bpa_dcm(Pk,BPA,Pf,params,P_opt)
 % Save the Bayesian Parameter Average
-%
+%--------------------------------------------------------------------------
 % Pk     - Posterior probability of each parameter
 % BPA.Cq - BPA covariances (reduced model)
 % BPA.Eq - BPA means (reduced model)
@@ -698,6 +715,7 @@ function DCM = save_bpa_dcm(Pk,BPA,Pf,params,P_opt)
 % P_opt  - Optimal model filenames
 
 % Get original (first) DCM
+%--------------------------------------------------------------------------
 try DCM=load(P_opt{1}); DCM=DCM.DCM; catch, DCM = P_opt{1}; end
 
 DCM.Pp    = Pk;    
@@ -708,6 +726,7 @@ DCM.files = P_opt;
 DCM.Pf    = Pf;    
 
 % and save as DCM_BPA
+%--------------------------------------------------------------------------
 try
     pth  = fileparts(P_opt{1});
     name = 'DCM_BPA.mat';
@@ -716,13 +735,13 @@ catch
     name = fullfile(pwd,'DCM_BPA.mat');
 end
 
-save(name,'DCM', spm_get_defaults('mat.format')); 
+save(name,'DCM', spm_get_defaults('mat.format'));
 
 
 %==========================================================================
 function write_reduced_model(C,i,DCM,filename)
 % Create and save a DCM file for a reduced model
-%
+%--------------------------------------------------------------------------
 % C        - reduced variance vector
 % i        - model index
 % DCM      - model
@@ -744,7 +763,7 @@ qC  = DCM.Cp;
 pE  = DCM.M.pE;
 pC  = DCM.M.pC;
 
-rC = diag(C)*pC*diag(C);
+rC  = diag(C)*pC*diag(C);
 
 %-Get posterior of selected model - rC
 %--------------------------------------------------------------------------
@@ -754,6 +773,7 @@ rC = diag(C)*pC*diag(C);
 %--------------------------------------------------------------------------
 
 % Bayesian inference and variance
+%--------------------------------------------------------------------------
 try
     T = full(spm_vec(pE)) + DCM.T;
 catch
@@ -765,6 +785,7 @@ Vp   = spm_unvec(diag(Cp),Ep);
 warning(sw);
 
 % Store parameter estimates
+%--------------------------------------------------------------------------
 DCM.M.pC    = rC;
 DCM.Ep      = Ep;
 DCM.Cp      = Cp;
@@ -772,11 +793,13 @@ DCM.Pp      = Pp;
 DCM.Vp      = Vp;
 
 % and in DEM format
+%--------------------------------------------------------------------------
 DCM.qP.P{1} = Ep;
 DCM.qP.C    = Cp;
 DCM.qP.V{1} = spm_unvec(diag(Cp),Ep);
 
 % and in prior constraints fields
+%--------------------------------------------------------------------------
 try
     DCM.a   = R.a;
     DCM.b   = R.b;
@@ -785,7 +808,8 @@ try
 end
 
 % approximations to model evidence: negative free energy, AIC, BIC
-DCM.F        = F;
+%--------------------------------------------------------------------------
+DCM.F = F;
 try
     evidence = spm_dcm_evidence(DCM);
     DCM.AIC  = evidence.aic_overall;
@@ -805,4 +829,5 @@ try
 catch
     name = sprintf('DCM_reduced_%04i.mat',i);
 end
+
 save(name,'DCM', spm_get_defaults('mat.format'));

@@ -111,10 +111,10 @@ function varargout = spm_list(varargin)
 % extract the table data to the MATLAB workspace.
 %
 %__________________________________________________________________________
-% Copyright (C) 1999-2014 Wellcome Trust Centre for Neuroimaging
+% Copyright (C) 1999-2015 Wellcome Trust Centre for Neuroimaging
 
 % Karl Friston, Andrew Holmes, Guillaume Flandin
-% $Id: spm_list.m 6193 2014-09-23 20:05:59Z guillaume $
+% $Id: spm_list.m 6950 2016-11-25 12:05:08Z guillaume $
 
 
 %==========================================================================
@@ -245,7 +245,7 @@ case 'table'                                                        %-Table
         'cluster',  'p(unc)',       '\itp\rm_{uncorr}';...
         'peak',     'p(FWE-corr)',  '\itp\rm_{FWE-corr}';...
         'peak',     'p(FDR-corr)',  '\itq\rm_{FDR-corr}';...
-        'peak',      STAT,          sprintf('\\it%c',STAT);...
+        'peak',      STAT,          sprintf('\\it%s',STAT);...
         'peak',     'equivZ',       '(\itZ\rm_\equiv)';...
         'peak',     'p(unc)',       '\itp\rm_{uncorr}';...
         '',         'x,y,z {mm}',   [units{:}]}';...
@@ -318,9 +318,12 @@ case 'table'                                                        %-Table
         TabDat.ftr{4,1} = ...
             'Expected number of clusters, <c> = %0.2f';
         TabDat.ftr{4,2} = Ec*Pn;
-        if any(isnan(uc))
+        if isnan(uc(3))
             TabDat.ftr{5,1} = 'FWEp: %0.3f, FDRp: %0.3f';
             TabDat.ftr{5,2} = uc(1:2);
+        elseif isnan(uc(4))
+            TabDat.ftr{5,1} = 'FWEp: %0.3f, FDRp: %0.3f, FWEc: %0.0f';
+            TabDat.ftr{5,2} = uc(1:3);
         else
             TabDat.ftr{5,1} = ...
                 'FWEp: %0.3f, FDRp: %0.3f, FWEc: %0.0f, FDRc: %0.0f';
@@ -777,6 +780,16 @@ case 'table'                                                        %-Table
         'CallBack',...
         'spm_list(''csvlist'',get(get(gcbo,''Parent''),''UserData''));',...
         'Interruptible','off','BusyAction','Cancel');
+    % Export to NIDM-Results using xSPM/TabDat from base workspace
+    h1 = uimenu(h,'Label','Export to NIDM-Results');
+    uimenu(h1,'Label','Locally',...
+        'CallBack',...
+        'fprintf(''Exporting results in:\n  %s\n'',spm_results_nidm(SPM,xSPM,TabDat));',...
+        'Interruptible','off','BusyAction','Cancel');
+%     uimenu(h1,'Label','Upload to NeuroVault',...
+%         'CallBack',...
+%         'spm_results_nidm(''upload'',spm_results_nidm(SPM,xSPM,TabDat));',...
+%         'Interruptible','off','BusyAction','Cancel');
 
     %-Setup registry
     %----------------------------------------------------------------------
@@ -796,6 +809,12 @@ case 'table'                                                        %-Table
         if nargin < 3, hReg = []; else hReg = varargin{3};   end
         xSPM = varargin{2};
 
+        if isfield(xSPM,'G')
+            warning('"current cluster" option not implemented for meshes.');
+            varargout = { evalin('base','TabDat') };
+            return;
+        end
+        
         %-Get number of maxima per cluster to be reported
         %------------------------------------------------------------------
         if nargin < 4, Num = spm_get_defaults('stats.results.svc.nbmax');
@@ -904,12 +923,15 @@ case 'table'                                                        %-Table
         if nargin == 3, ofile = varargin{3};
         else            ofile = [tempname '.csv']; end
         
-        fid = fopen(ofile,'wt');
-        fprintf(fid,[repmat('%s,',1,11) '%d,,\n'],TabDat.hdr{1,:});
-        fprintf(fid,[repmat('%s,',1,12) '\n'],TabDat.hdr{2,:});
-        fmt = TabDat.fmt;
+        fid  = fopen(ofile,'wt');
+        ncol = size(TabDat.hdr,2);
+        fmt  = repmat('%s,',1,ncol);
+        c    = repmat(',',1,nnz([TabDat.hdr{2,:}]==','));
+        fprintf(fid,[fmt(1:end-1) c '\n'],TabDat.hdr{1,:});
+        fprintf(fid,[fmt(1:end-1) '\n'],TabDat.hdr{2,:});
+        fmt  = strtrim(TabDat.fmt);
         [fmt{2,:}] = deal(','); fmt = [fmt{:}];
-        fmt(end:end+1) = '\n'; fmt = strrep(fmt,' ',',');
+        fmt  = [fmt(1:end-1) '\n']; fmt = strrep(fmt,' ',',');
         for i=1:size(TabDat.dat,1)
             fprintf(fid,fmt,TabDat.dat{i,:});
         end
@@ -939,6 +961,120 @@ case 'table'                                                        %-Table
             set(HlistXYZ(i),'Color','r');
         end
 
+    %======================================================================
+    case 'label'                                     %-Display atlas labels
+    %======================================================================
+    % FORMAT spm_list('label',atlas)
+    %-Use atlas to label suprathreshold features
+    
+    fprintf('*** Use atlas labelling with great caution ***\n');
+    
+    spm('Pointer','Watch')
+
+    xA = spm_atlas('load',varargin{2:end});
+
+    % F  = spm_figure('GetWin','Satellite');
+    % spm_figure('Focus',F);
+    % spm_results_ui('Clear',F);
+    % 
+    % %-Display activation labels
+    % %----------------------------------------------------------------------
+    % FS    = spm('FontSizes');
+    % PF    = spm_platform('fonts');
+    % 
+    % hAx   = axes('Parent',F,...
+    %              'Position',[0.025 0.05 0.95 0.9],...
+    %              'DefaultTextFontSize',FS(8),...
+    %              'DefaultTextInterpreter','Tex',...
+    %              'DefaultTextVerticalAlignment','Baseline',...
+    %              'Tag','XXXXXXXXXXXXXXX',...
+    %              'Units','points',...
+    %              'Visible','off');
+    % 
+    % AxPos = get(hAx,'Position'); set(hAx,'YLim',[0,AxPos(4)])
+    % dy    = FS(9);
+    % y     = floor(AxPos(4)) - dy;
+    % 
+    % text(0,y,['Atlas:  \it\fontsize{',num2str(FS(9)),'}',xA.info.name],...
+    %           'FontSize',FS(11),'FontWeight','Bold');   y = y - dy/2;
+    % line([0 1],[y y],'LineWidth',3,'Color','r'),        y = y - 9*dy/8;
+    % 
+    % set(hAx,'DefaultTextFontName',PF.helvetica,'DefaultTextFontSize',FS(8))
+    % 
+    % text(0.01,y,'mm mm mm','Fontsize',FS(8));
+    % text(0.15,y,'label','Fontsize',FS(8));
+    % 
+    % y     = y - dy/2;
+    % line([0 1],[y y],'LineWidth',1,'Color','r')
+    % y     = y - dy;
+    % y0    = y;
+    % 
+    % TabDat = evalin('base','TabDat');
+    % 
+    % for i=1:size(TabDat.dat,1)
+    %     XYZmm = TabDat.dat{i,12};
+    %     if  ~isempty(TabDat.dat{i,5}), fw = 'Bold'; else fw = 'Normal'; end
+    %     h = text(0.01,y,sprintf(TabDat.fmt{12},XYZmm),...
+    %                  'FontWeight',fw);
+    %     lab = spm_atlas('query',xA,XYZmm);
+    %     h = text(0.1,y,strrep(lab,'_','\_'),'FontWeight',fw);
+    %     y = y - dy;
+    % end
+
+    hAx = findobj('Tag','SPMList');
+    
+    for a=1:numel(hAx)
+        UD        = get(hAx(a),'UserData');
+        if isempty(UD), continue; end
+        HlistXYZ  = UD.HlistXYZ(ishandle(UD.HlistXYZ));
+        
+        %-Add contextual menus to coordinates
+        %------------------------------------------------------------------
+        for i=1:numel(HlistXYZ)
+            h     = uicontextmenu('Parent',ancestor(hAx(a),'figure'));
+            XYZmm = get(HlistXYZ(i),'UserData');
+            
+            %-Consider peak only
+            %--------------------------------------------------------------
+            labk  = spm_atlas('query',xA,XYZmm);
+            if ~ischar(labk), warning('Probabilistic atlases not handled yet.'); return; end
+            
+            hi    = uimenu(h,'Label',['<html><b>' labk '</b></html>']);
+            
+            %-Consider a 10mm sphere around the peak
+            %--------------------------------------------------------------
+            [labk,P] = spm_atlas('query',xA,...
+                struct('def','sphere','spec',10,'xyz',XYZmm));
+            
+            for j=1:numel(labk)
+                hj   = uimenu(hi,'Label',sprintf('<html><b>%s</b> (%.1f%%)</html>',labk{j},P(j)));
+                %'Callback',['web(''' spm_atlas('weblink',XYZmm,'') ''',''-notoolbar'');']);
+            end
+            
+            set(HlistXYZ(i),'UIContextMenu',h);
+        end
+        
+        %-Add contextual menus to clusters
+        %------------------------------------------------------------------
+        HlistClust = UD.HlistClust(ishandle(UD.HlistClust));
+        xSPM = evalin('base','xSPM');
+        A = spm_clusters(xSPM.XYZ);
+        
+        for i=1:numel(HlistClust)
+            hi      = uicontextmenu('Parent',ancestor(hAx(a),'figure'));
+            XYZmm  = getfield(get(HlistClust(i),'UserData'),'XYZmm');
+            [unused,j] = spm_XYZreg('NearestXYZ',XYZmm,xSPM.XYZmm);
+            [labk, P]  = spm_atlas('query',xA,xSPM.XYZmm(:,A==A(j)));
+            for k=1:numel(labk)
+                hj = uimenu(hi,'Label',sprintf('<html><b>%s</b> (%.1f%%)</html>',labk{k},P(k)));
+            end
+            set(HlistClust(i),'UIContextMenu',hi);
+        end
+        
+    end
+    
+    spm('Pointer','Arrow')
+        
     %======================================================================
     otherwise                                       %-Unknown action string
     %======================================================================

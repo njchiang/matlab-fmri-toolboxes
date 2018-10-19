@@ -4,7 +4,7 @@ function cfg = tbx_cfg_longitudinal
 % Copyright (C) 2012 Wellcome Trust Centre for Neuroimaging
 
 % John Ashburner
-% $Id: tbx_cfg_longitudinal.m 5885 2014-02-18 11:53:55Z john $
+% $Id: tbx_cfg_longitudinal.m 7155 2017-08-17 10:55:05Z john $
 
 if ~isdeployed,
     addpath(fullfile(spm('Dir'),'toolbox','Longitudinal'));
@@ -80,7 +80,7 @@ wparam         = cfg_entry;
 wparam.tag     = 'wparam';
 wparam.name    = 'Warping Regularisation';
 wparam.help    = {'Registration involves simultaneously minimising two terms.  One of these is a measure of similarity between the images (mean-squared difference in the current situation), whereas the other is a measure of the roughness of the deformations.  This measure of roughness involves the sum of the following terms:',...
-'* Absolute displacements need to be penalised by a tiny amount.  The first element encodes the amount of penalty on these.  Ideally, absolute displacements should not be penalised, but it is necessary for technical reasons.',...
+'* Absolute displacements need to be penalised by a tiny amount.  The first element encodes the amount of penalty on these.  Ideally, absolute displacements should not be penalised, but it is often necessary for technical reasons.',...
 '* The `membrane energy'' of the deformation is penalised (2nd element), usually by a relatively small amount. This penalises the sum of squares of the derivatives of the velocity field (ie the sum of squares of the elements of the Jacobian tensors).',...
 '* The `bending energy'' is penalised (3rd element). This penalises the sum of squares of the 2nd derivatives of the velocity.',...
 '* Linear elasticity regularisation is also included (4th and 5th elements).  The first parameter (mu) is similar to that for linear elasticity, except it penalises the sum of squares of the Jacobian tensors after they have been made symmetric (by averaging with the transpose).  This term essentially penalises length changes, without penalising rotations.',...
@@ -90,6 +90,7 @@ wparam.help    = {'Registration involves simultaneously minimising two terms.  O
 wparam.strtype = 'e';
 wparam.num     = [1 5];
 wparam.val     = {[0 0 100 25 100]};
+% Change to (eg): wparam.val     = {[0 0 100 25 12]};
 
 write_avg         = cfg_menu;
 write_avg.tag     = 'write_avg';
@@ -157,7 +158,7 @@ long2         = cfg_exbranch;
 long2.tag     = 'pairwise';
 long2.name    = 'Pairwise Longitudinal Registration';
 long2.val     = {vols1 vols2 tdif noise wparam bparam write_avg write_jacd write_divd write_defs};
-long2.help    = {'Longitudinal registration of pairs of anatomical MRI scans.  It is based on pairwise inverse-consistent alignment between the first and second scan of each subject, and incorporates a bias field correction.  Prior to running the registration, the scans should already be in very rough alignment, although because the model incorporates a rigid-body transform, this need not be extremely precise.  Note that there are a bunch of hyper-parameters to be specified.  If you are unsure what values to take, then the defaults should be a reasonable guess of what works.  Note that changes to these hyper-parameters will impact the results obtained.',...
+long2.help    = {'Longitudinal registration of pairs of anatomical MRI scans.  It is based on pairwise inverse-consistent alignment between the first and second scan of each subject, and incorporates a bias field correction /* \cite{ashburner2013symmetric} */.  Prior to running the registration, the scans should already be in very rough alignment, although because the model incorporates a rigid-body transform, this need not be extremely precise.  Note that there are a bunch of hyper-parameters to be specified.  If you are unsure what values to take, then the defaults should be a reasonable guess of what works.  Note that changes to these hyper-parameters will impact the results obtained.',...
 '',...
 'The alignment assumes that all scans have similar resolutions and dimensions, and were collected on the same (or very similar) MR scanner using the same pulse sequence.  If these assumption are not correct, then the approach will not work as well.'};
 long2.prog = @spm_pairwise;
@@ -168,12 +169,12 @@ long         = cfg_exbranch;
 long.tag     = 'series';
 long.name    = 'Serial Longitudinal Registration';
 long.val     = {vols tim noise wparam bparam write_avg write_jac write_div write_defs};
-long.help    = {'Longitudinal registration of series of anatomical MRI scans for a single subject.  It is based on groupwise alignment among each of the subject''s scans, and incorporates a bias field correction.  Prior to running the registration, the scans should already be in very rough alignment, although because the model incorporates a rigid-body transform, this need not be extremely precise.  Note that there are a bunch of hyper-parameters to be specified.  If you are unsure what values to take, then the defaults should be a reasonable guess of what works.  Note that changes to these hyper-parameters will impact the results obtained.',...
+long.help    = {'Longitudinal registration of series of anatomical MRI scans for a single subject.  It is based on groupwise alignment among each of the subject''s scans, and incorporates a bias field correction /* \cite{ashburner2013symmetric} */.  Prior to running the registration, the scans should already be in very rough alignment, although because the model incorporates a rigid-body transform, this need not be extremely precise.  Note that there are a bunch of hyper-parameters to be specified.  If you are unsure what values to take, then the defaults should be a reasonable guess of what works.  Note that changes to these hyper-parameters will impact the results obtained.',...
 '',...
-'The alignment assumes that all scans have similar resolutions and dimensions, and were collected on the same (or very similar) MR scanner using the same pulse sequence.  If these assumption are not correct, then the approach will not work as well.'};
+'The alignment assumes that all scans have similar resolutions and dimensions, and were collected on the same (or very similar) MR scanner using the same pulse sequence.  If these assumption are not correct, then the approach will not work as well.  There are a number of settings (noise estimate, regularisation etc). Default settings often work well, but it can be very helpful to try some different values, as these can have a large effect on the results.'};
 long.prog = @spm_series_align;
 
-cfg        = cfg_repeat;
+cfg        = cfg_choice;
 cfg.tag    = 'longit';
 cfg.name   = 'Longitudinal Registration';
 cfg.values = {long2,long};

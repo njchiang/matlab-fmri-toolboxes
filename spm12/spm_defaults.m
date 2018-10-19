@@ -8,7 +8,7 @@ function spm_defaults
 % MATLAB Startup Folder: userhome/Documents/MATLAB.
 %
 % Example: create the following file to change the image file extension:
-% ----------- file /home/karl/Documents/MATLAB/spm_my_defauls.m -----------
+% ----------- file /home/karl/Documents/MATLAB/spm_my_defaults.m -----------
 % global defaults
 % defaults.images.format = 'img';
 %--------------------------------------------------------------------------
@@ -20,10 +20,10 @@ function spm_defaults
 %
 %                 ** This file should not be edited **
 %__________________________________________________________________________
-% Copyright (C) 1994-2014 Wellcome Trust Centre for Neuroimaging
+% Copyright (C) 1994-2016 Wellcome Trust Centre for Neuroimaging
 
 % SPM
-% $Id: spm_defaults.m 6221 2014-09-30 20:52:29Z guillaume $
+% $Id: spm_defaults.m 7173 2017-09-22 11:26:31Z guillaume $
 
 
 global defaults
@@ -62,6 +62,7 @@ defaults.stats.fmri.t   = 16;
 defaults.stats.fmri.t0  = 8;
 defaults.stats.fmri.hpf = 128;
 defaults.stats.fmri.cvi = 'AR(1)';
+defaults.stats.fmri.hrf = [6 16 1 1 6 0 32];
 
 % Mask defaults
 %==========================================================================
@@ -69,7 +70,7 @@ defaults.mask.thresh    = 0.8;
 
 % Stats defaults
 %==========================================================================
-defaults.stats.maxmem      = 2^26;
+defaults.stats.maxmem      = 2^29;
 defaults.stats.maxres      = 64;
 defaults.stats.resmem      = false;
 defaults.stats.fmri.ufp    = 0.001;  % Upper tail F-probability
@@ -85,12 +86,14 @@ defaults.stats.results.mipmat         = {fullfile(spm('dir'),'MIP.mat')};
 
 % Filename prefix defaults
 %==========================================================================
-defaults.slicetiming.prefix     = 'a';
-defaults.realign.write.prefix   = 'r';
-defaults.coreg.write.prefix     = 'r';
-defaults.unwarp.write.prefix    = 'u';
-defaults.normalise.write.prefix = 'w';
-defaults.smooth.prefix          = 's';
+defaults.slicetiming.prefix           = 'a';
+defaults.realign.write.prefix         = 'r';
+defaults.coreg.write.prefix           = 'r';
+defaults.unwarp.write.prefix          = 'u';
+defaults.normalise.write.prefix       = 'w';
+defaults.deformations.modulate.prefix = 'm';
+defaults.smooth.prefix                = 's';
+defaults.imcalc.prefix                = 'i';
 
 % Realignment defaults
 %==========================================================================
@@ -119,8 +122,7 @@ defaults.unwarp.estimate.jm       = 0;
 defaults.unwarp.estimate.noi      = 5;
 defaults.unwarp.estimate.expround = 'Average';
 %
-% Unwarp uses defaults.realign.write 
-% defaults for writing.
+% Unwarp uses defaults.realign.write defaults for writing.
 %
 
 % Coregistration defaults
@@ -206,7 +208,7 @@ if exist(user_defaults,'file')
     if isdeployed && exist(fullfile(spm('Dir'),user_defaults),'file')
         user_defaults_file = cellstr(fullfile(spm('Dir'),user_defaults));
     else
-        user_defaults_file = which(user_defaults,'-ALL');
+        user_defaults_file = cellstr(which(user_defaults,'-ALL'));
     end
     for i=1:numel(user_defaults_file)
         try

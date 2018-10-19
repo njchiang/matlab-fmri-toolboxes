@@ -5,7 +5,7 @@ function H = spm_eeg_history(S)
 % S  - filename or input struct (optional)
 % (optional) fields of S:
 % history         - history of M/EEG object (D.history)
-% sname           - filename of the to be generated MATLAB script
+% sname           - filename of the MATLAB script to generate
 %
 % H               - cell array summary of history for review purposes
 %__________________________________________________________________________
@@ -19,10 +19,10 @@ function H = spm_eeg_history(S)
 % course, the generated script can also be used as a template for a
 % slightly different analysis or for different subjects.
 %__________________________________________________________________________
-% Copyright (C) 2008 Wellcome Trust Centre for Neuroimaging
+% Copyright (C) 2008-2015 Wellcome Trust Centre for Neuroimaging
 
 % Stefan Kiebel
-% $Id: spm_eeg_history.m 5379 2013-04-02 18:59:18Z karl $
+% $Id: spm_eeg_history.m 6890 2016-09-28 13:34:47Z vladimir $
 
 try
     h = S.history;
@@ -129,6 +129,7 @@ for i=1:nf
             Df = args.D;
             try,Df = args.D.fname;end
             H{i,3} = Df;
+            if iscell(H{i,3}),H{i,3}='[composite]';end
             if i<nf
                 try
                     args2 = h(i+1).args;
@@ -200,10 +201,24 @@ for i=1:numel(h)
             hh{i} = 'Merge';
         case 'spm_eeg_tf'
             hh{i} = 'Compute time-frequency';
-        case 'spm_eeg_weight_epochs'
-            hh{i} = 'Compute contrast';
+        case {'spm_eeg_weight_epochs', 'spm_eeg_contrast'}
+            hh{i} = 'Compute contrast';        
         case 'spm_eeg_sort_conditions'
             hh{i} = 'Sort conditions';
+        case 'spm_eeg_crop'
+            hh{i} = 'Crop';
+        case 'spm_eeg_combineplanar'
+            hh{i} = 'Combine planar';
+        case 'spm_eeg_fuse'
+            hh{i} = 'Fuse';
+        case 'spm_eeg_remove_bad_trials'
+            hh{i} = 'Remove bad trials';
+        case 'spm_eeg_reduce'
+            hh{i} = 'Data reduction';
+        case 'spm_eeg_avgfreq'
+            hh{i} = 'Average over frequency';
+        case 'spm_eeg_avgtime'
+            hh{i} = 'Average over time';    
         case 'spm_eeg_prep'
             switch h(i).args.task
                 case 'settype'
@@ -212,6 +227,8 @@ for i=1:numel(h)
                     hh{i} = 'Set 2D coordinates';
                 case 'loadeegsens'
                     hh{i} = 'Load EEG sensor locations';
+                case 'loadmegsens'
+                    hh{i} = 'Load MEG sensor locations';
                 case 'defaulteegsens'
                     hh{i} = 'Set EEG sensor locations to default';
                 case 'sens2chan'
@@ -220,6 +237,10 @@ for i=1:numel(h)
                     hh{i} = 'Load fiducials/headshape';
                 case 'coregister'
                     hh{i} = 'Coregister';
+                case 'setbadchan'
+                    hh{i} = 'Set bad channels';  
+                case 'sortconditions'
+                    hh{i} = 'Sort conditions';  
                 otherwise
                     hh{i} = ['Prepare: ' h(i).args.task];
             end

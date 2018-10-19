@@ -9,7 +9,7 @@ function varargout = spm_jobman(varargin)
 % FORMAT output_list = spm_jobman('run',job[,input1,...inputN])
 % FORMAT [output_list, hjob] = spm_jobman('run',job[,input1,...inputN])
 % Run specified job.
-% job         - filename of a job (.m, .mat or .xml), or
+% job         - filename of a job (.m or .mat), or
 %               cell array of filenames, or
 %               'jobs'/'matlabbatch' variable, or
 %               cell array of 'jobs'/'matlabbatch' variables.
@@ -38,7 +38,7 @@ function varargout = spm_jobman(varargin)
 %        job_id = spm_jobman('interactive',job[,node])
 %        job_id = spm_jobman('interactive','',node)
 % Run the user interface in interactive mode.
-% job         - filename of a job (.m, .mat or .xml), or
+% job         - filename of a job (.m or .mat), or
 %               cell array of filenames, or
 %               'jobs'/'matlabbatch' variable, or
 %               cell array of 'jobs'/'matlabbatch' variables.
@@ -53,10 +53,10 @@ function varargout = spm_jobman(varargin)
 % jobs        - char or cell array of filenames, or
 %               'jobs'/'matlabbbatch' variable
 %__________________________________________________________________________
-% Copyright (C) 2005-2012 Wellcome Trust Centre for Neuroimaging
+% Copyright (C) 2005-2016 Wellcome Trust Centre for Neuroimaging
 
 % Volkmar Glauche
-% $Id: spm_jobman.m 6157 2014-09-05 18:17:54Z guillaume $
+% $Id: spm_jobman.m 6968 2016-12-09 15:58:00Z guillaume $
 
 
 %__________________________________________________________________________
@@ -103,9 +103,10 @@ function varargout = spm_jobman(varargin)
 %--------------------------------------------------------------------------
 persistent isInitCfg;
 if isempty(isInitCfg) &&  ~(nargin == 1 && strcmpi(varargin{1},'initcfg'))
-    warning('spm:spm_jobman:notInitialised',...
-        'Run spm_jobman(''initcfg''); beforehand');
+    % Run spm_jobman('initcfg') beforehand.
+    fprintf('Initialising batch system... ');
     spm_jobman('initcfg');
+    fprintf('done.\n');
 end
 isInitCfg = true;
 
@@ -168,7 +169,22 @@ switch action
             addpath(fullfile(spm('Dir'),'matlabbatch'));
             addpath(fullfile(spm('Dir'),'config'));
         end
-        spm_select('init');
+        try
+            spm_select('init');
+        catch
+            S = which('spm_select','-all');
+            if numel(S) > 1
+                fprintf('spm_select appears several times in your MATLAB path:\n');
+                for i=1:numel(S)
+                    if i==1
+                        fprintf('  %s (SHADOWING)\n',S{1});
+                    else
+                        fprintf('  %s\n',S{i});
+                    end
+                end
+            end
+            rethrow(lasterror);
+        end
         cfg_get_defaults('cfg_util.genscript_run', @genscript_run);
         cfg_util('initcfg'); % This must be the first call to cfg_util
         %if ~spm('cmdline')
@@ -288,10 +304,8 @@ end
 % function newjobs = load_jobs(job)
 %==========================================================================
 function newjobs = load_jobs(job)
-% Load a list of possible job files, return a cell list of jobs. Jobs can
-% be either SPM5 (i.e. containing a 'jobs' variable) or matlabbatch
-% jobs. If a job file failed to load, an empty cell is returned in the
-% list.
+% Load a list of possible job files, return a cell list of jobs.
+% If a job file failed to load, an empty cell is returned in the list.
 filenames = cellstr(job);
 newjobs = {};
 for i = 1:numel(filenames)
@@ -309,25 +323,24 @@ for i = 1:numel(filenames)
             end
         case 'm'
             try
-                fid = fopen(filenames{i},'rt');
-                str = fread(fid,'*char');
-                fclose(fid);
+                str = fileread(filenames{i});
                 eval(str);
             catch
                 warning('spm:spm_jobman:loadFailed','Load failed: ''%s''',filenames{i});
             end
-        case 'xml'
-            spm('Pointer','Watch');
+        case 'json'
             try
-                loadxml(filenames{i},'jobs');
-            catch
-                try
-                    loadxml(filenames{i},'matlabbatch');
-                catch
-                    warning('spm:spm_jobman:loadFailed','Load failed: ''%s''',filenames{i});
+                S = spm_jsonread(filenames{i});
+                if isstruct(S)
+                    for j=1:numel(S)
+                        matlabbatch{j} = S(j);
+                    end
+                else
+                    matlabbatch = S;
                 end
+            catch
+                warning('spm:spm_jobman:loadFailed','Load failed: ''%s''',filenames{i});
             end
-            spm('Pointer','Arrow');
         otherwise
             warning('spm:spm_jobman:unknownExt','Unknown extension: ''%s''',filenames{i});
     end

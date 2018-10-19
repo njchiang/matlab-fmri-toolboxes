@@ -18,7 +18,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  *
- * $Id: read_24bit.c 7123 2012-12-06 21:21:38Z roboos $
+ * $Id$
  */
 
 /*
@@ -28,10 +28,11 @@
 
 #define _LARGEFILE_SOURCE
 
+#include <stdio.h>
 #include <math.h>
 #include <sys/types.h>
 #include "mex.h"
-#include "matrix.h"
+#include <stdio.h>
 
 #if defined(_WIN32) || defined(_WIN64)
 #define int32_t INT32_T

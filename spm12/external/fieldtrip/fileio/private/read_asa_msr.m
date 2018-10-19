@@ -1,11 +1,11 @@
-function data = read_asa_msr(fn);
+function data = read_asa_msr(fn)
 
 % READ_ASA_MSR reads EEG or MEG data from an ASA data file
 % converting the units to uV or fT
 
 % Copyright (C) 2002, Robert Oostenveld
 % 
-% This file is part of FieldTrip, see http://www.ru.nl/neuroimaging/fieldtrip
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
 % for the documentation and details.
 %
 %    FieldTrip is free software: you can redistribute it and/or modify
@@ -21,7 +21,7 @@ function data = read_asa_msr(fn);
 %    You should have received a copy of the GNU General Public License
 %    along with FieldTrip. If not, see <http://www.gnu.org/licenses/>.
 %
-% $Id: read_asa_msr.m 7123 2012-12-06 21:21:38Z roboos $
+% $Id$
 
 Npnt      = read_asa(fn, 'NumberPositions=', '%d');
 Ntime     = read_asa(fn, 'NumberTimesteps=', '%d');
@@ -47,7 +47,7 @@ if strcmpi(UnitT,'ms')
 elseif strcmpi(UnitT,'s')
   time = 1000*time;
 elseif ~isempty(UnitT)
-  error(sprintf('Unknown unit of time (%s)', UnitT));
+  ft_error(sprintf('Unknown unit of time (%s)', UnitT));
 end
 
 if strcmpi(UnitM,'uv')
@@ -63,7 +63,7 @@ elseif strcmpi(UnitM,'ft')
 elseif strcmpi(UnitM,'pt')
   val = 1000*val;
 elseif ~isempty(UnitM)
-  error(sprintf('Unknown unit of measurement (%s)', UnitM));
+  ft_error(sprintf('Unknown unit of measurement (%s)', UnitM));
 end
 
 if length(size(lab))==2

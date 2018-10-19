@@ -10,7 +10,7 @@ function [outputlabel, outputindex] = inputlabel2outputlabel(cfg, freq)
 %                     'pseudomeg' one gradiometer versus the rest
 %   TODO: more flexible way of combining, e.g. by providing a cell-array 
 
-% This file is part of FieldTrip, see http://www.ru.nl/neuroimaging/fieldtrip
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
 % for the documentation and details.
 %
 %    FieldTrip is free software: you can redistribute it and/or modify
@@ -26,9 +26,9 @@ function [outputlabel, outputindex] = inputlabel2outputlabel(cfg, freq)
 %    You should have received a copy of the GNU General Public License
 %    along with FieldTrip. If not, see <http://www.gnu.org/licenses/>.
 %
-% $Id: inputlabel2outputlabel.m 7123 2012-12-06 21:21:38Z roboos $
+% $Id$
 
-if ~isfield(cfg, 'combinechan'), cfg.combinechan = 'no'; end;
+if ~isfield(cfg, 'combinechan'), cfg.combinechan = 'no'; end
 
 if strcmp(cfg.combinechan, 'no')
   % the output labels are similar to the input labels
@@ -95,5 +95,5 @@ elseif iscell(cfg.combinechan(1)),
     outputlabel{i} = cell2mat(freq.label(outputindex{i})');
   end
 else
-  error('unknown combination method');
+  ft_error('unknown combination method');
 end

@@ -7,7 +7,7 @@ function [msi] = read_bti_m4d(filename)
 
 % Copyright (C) 2007, Robert Oostenveld
 %
-% This file is part of FieldTrip, see http://www.ru.nl/neuroimaging/fieldtrip
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
 % for the documentation and details.
 %
 %    FieldTrip is free software: you can redistribute it and/or modify
@@ -23,7 +23,7 @@ function [msi] = read_bti_m4d(filename)
 %    You should have received a copy of the GNU General Public License
 %    along with FieldTrip. If not, see <http://www.gnu.org/licenses/>.
 %
-% $Id: read_bti_m4d.m 8770 2013-11-12 13:54:58Z roboos $
+% $Id$
 
 [p, f, x] = fileparts(filename);
 if ~strcmp(x, '.m4d')
@@ -33,7 +33,7 @@ end
 
 fid = fopen(filename, 'r');
 if fid==-1
-  error(sprintf('could not open file %s', filename));
+  ft_error(sprintf('could not open file %s', filename));
 end
 
 % start with an empty header structure
@@ -83,7 +83,7 @@ while ischar(line)
     val = line((sep+1):end);
   elseif length(sep)<1
     % this is not what I would expect
-    error('unexpected content in m4d file');
+    ft_error('unexpected content in m4d file');
   end
 
   if ~isempty(strfind(line, 'Begin')) && (~isempty(strfind(line, 'Meg_Position_Information')) || ~isempty(strfind(line, 'Ref_Position_Information'))) 
@@ -130,7 +130,7 @@ while ischar(line)
       msi.grad.coilpos   = [msi.grad.coilpos; num(:,1:3)];
       msi.grad.coilori   = [msi.grad.coilori; num(:,4:6)];
     else
-      error('unknown gradiometer design')
+      ft_error('unknown gradiometer design')
     end
   end
   

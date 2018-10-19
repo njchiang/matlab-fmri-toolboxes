@@ -1,4 +1,4 @@
-function [s] = ft_statfun_diff_itc(cfg, dat, design)
+function [s, cfg] = ft_statfun_diff_itc(cfg, dat, design)
 
 % FT_STATFUN_DIFF_ITC computes the difference in the inter-trial
 % coherence between two conditions. The input data for this test
@@ -24,11 +24,17 @@ function [s] = ft_statfun_diff_itc(cfg, dat, design)
 %  cfg.complex    = 'diffabs' to compute the difference of the absolute ITC values (default), or
 %                   'absdiff' to compute the absolute value of the difference in the complex ITC values.
 % 
+% NOTE: For this specific statistic there is no known parametric distribution, hence
+% the probability and critical value cannot be computed. This specific statistic can
+% therefore only be used with cfg.method='montecarlo'. If you want to do this in combination
+% with cfg.correctm='cluster', you need cfg.clusterthreshold='nonparametric_common' or
+% cfg.clusterthreshold='nonparametric_individual'.
+%
 % See FT_FREQSTATISTICS and FT_STATISTICS_MONTECARLO for more details
 
-% Copyright (C) 2008, Robert Oostenveld
+% Copyright (C) 2008-2014, Robert Oostenveld
 %
-% This file is part of FieldTrip, see http://www.ru.nl/neuroimaging/fieldtrip
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
 % for the documentation and details.
 %
 %    FieldTrip is free software: you can redistribute it and/or modify
@@ -44,7 +50,7 @@ function [s] = ft_statfun_diff_itc(cfg, dat, design)
 %    You should have received a copy of the GNU General Public License
 %    along with FieldTrip. If not, see <http://www.gnu.org/licenses/>.
 %
-% $Id: ft_statfun_diff_itc.m 8736 2013-11-07 21:17:32Z roboos $
+% $Id$
 
 % set the defaults
 if ~isfield(cfg, 'complex'), cfg.complex = 'diffabs';   end
@@ -54,10 +60,10 @@ selB = find(design(cfg.ivar,:)==2);
 dfA  = length(selA);
 dfB  = length(selB);
 if (dfA+dfB)<size(design, 2)
-  error('inappropriate design, should contain 1''s and 2''s');
+  ft_error('inappropriate design, should contain 1''s and 2''s');
 end
 if isreal(dat)
-  error('the data should be complex, i.e. computed with freqanalysis and cfg.output="fourier"');
+  ft_error('the data should be complex, i.e. computed with freqanalysis and cfg.output="fourier"');
 end
 % normalise the complex data in each trial
 dat = dat./abs(dat);
@@ -68,16 +74,14 @@ case 'diffabs'
   % this is not sensitive to phase differences
   itcA = abs(mean(dat(:,selA), 2)); % ITC is the length of the average complex numbers
   itcB = abs(mean(dat(:,selB), 2)); % ITC is the length of the average complex numbers
-  s = itcA - itcB;
+  s.stat = itcA - itcB;
 case 'absdiff'
   % first compute the difference, then take the absolute
   % this is sensitive to phase differences
   itcA = mean(dat(:,selA), 2); % ITC is here the average complex number
   itcB = mean(dat(:,selB), 2); % ITC is here the average complex number
-  s = abs(itcA - itcB);
+  s.stat = abs(itcA - itcB);
 otherwise
-  error('incorrect specification of cfg.complex');
+  ft_error('incorrect specification of cfg.complex');
 end
-
-s.stat = s;
 

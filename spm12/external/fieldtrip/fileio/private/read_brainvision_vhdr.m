@@ -1,4 +1,4 @@
-function [hdr] = read_brainvision_vhdr(filename);
+function [hdr] = read_brainvision_vhdr(filename)
 
 % READ_BRAINVISION_VHDR reads the known items from the BrainVision EEG
 % header file and returns them in a structure
@@ -10,7 +10,7 @@ function [hdr] = read_brainvision_vhdr(filename);
 
 % Copyright (C) 2003, Robert Oostenveld
 %
-% This file is part of FieldTrip, see http://www.ru.nl/neuroimaging/fieldtrip
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
 % for the documentation and details.
 %
 %    FieldTrip is free software: you can redistribute it and/or modify
@@ -26,7 +26,7 @@ function [hdr] = read_brainvision_vhdr(filename);
 %    You should have received a copy of the GNU General Public License
 %    along with FieldTrip. If not, see <http://www.gnu.org/licenses/>.
 %
-% $Id: read_brainvision_vhdr.m 9252 2014-03-03 10:49:12Z eelspa $
+% $Id$
 
 hdr.DataFile         = read_asa(filename, 'DataFile=', '%s');
 hdr.MarkerFile       = read_asa(filename, 'MarkerFile=', '%s');
@@ -47,7 +47,7 @@ if ~isempty(hdr.NumberOfChannels)
     if ~isempty(resolution)
       hdr.resolution(i) = resolution;
     else
-      warning('unknown resolution (i.e. recording units) for channel %d in %s', i, filename);
+      ft_warning('unknown resolution (i.e. recording units) for channel %d in %s', i, filename);
       hdr.resolution(i) = 1;
     end
   end
@@ -68,7 +68,7 @@ if strcmpi(hdr.DataFormat, 'binary')
   % but that might be on another location than the present working directory
   info = dir(datafile);
   if isempty(info)
-    error('cannot determine the location of the data file %s', hdr.DataFile);
+    ft_error('cannot determine the location of the data file %s', hdr.DataFile);
   end
   switch lower(hdr.BinaryFormat)
     case 'int_16';
@@ -110,7 +110,7 @@ elseif strcmpi(hdr.DataFormat, 'ascii')
 end
 
 if isinf(hdr.nSamples)
-  warning('cannot determine number of samples for this sub-fileformat');
+  ft_warning('cannot determine number of samples for this sub-fileformat');
 end
 
 % the number of trials is unkown, assume continuous data

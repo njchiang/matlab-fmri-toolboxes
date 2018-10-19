@@ -35,21 +35,21 @@
 % along with this program; if not, write to the Free Software
 % Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 %
-% $Id: windows.m 9825 2014-09-22 15:19:53Z roboos $
+% $Id$
 
 function w = windows(t, m, a)
 
 if nargin < 2 || isempty(t) || isempty(m)
-    error('Not enough input arguments.');
+    ft_error('Not enough input arguments.');
 end
 
 % Check window length
 if m ~= round(m)
     m = round(m);
-    warning('firws:nonIntegerWindowLength', 'Non-integer window length. Rounding to integer.')
+    ft_warning('firws:nonIntegerWindowLength', 'Non-integer window length. Rounding to integer.')
 end
 if m < 1
-    error('Invalid window length.')
+    ft_error('Invalid window length.')
 end
 
 % Length 1
@@ -102,7 +102,7 @@ switch t
             w = [0.5 * (1 + cos(pi * xTaper)); ones(length(x) - mTaper, 1)];
         end
     otherwise
-        error('Unkown window type')
+        ft_error('Unkown window type')
 end
 
 % Make symmetric

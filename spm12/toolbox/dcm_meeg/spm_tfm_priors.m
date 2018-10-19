@@ -9,7 +9,7 @@ function [E,V] = spm_tfm_priors(A,B,C)
 % synaptic parameters
 %--------------------------------------------------------------------------
 %    pE.T - syaptic time constants
-%    pE.S - activation function parameters
+%    pE.S - intrinsic again
 %    pE.G - intrinsic connection strengths
 %
 % connectivity parameters
@@ -44,7 +44,7 @@ function [E,V] = spm_tfm_priors(A,B,C)
 % Copyright (C) 2011 Wellcome Trust Centre for Neuroimaging
  
 % Karl Friston
-% $Id: spm_tfm_priors.m 6122 2014-07-25 13:48:47Z karl $
+% $Id: spm_tfm_priors.m 6856 2016-08-10 17:55:05Z karl $
  
 % default: a single source model
 %--------------------------------------------------------------------------
@@ -72,6 +72,8 @@ D{4}  = A{2};                                     % backward (ii)
 
 % modulatory extrinsic connectivity
 %--------------------------------------------------------------------------
+if numel(A) < 3, A{3} = spm_zeros(A{1}); end
+
 E.M   = 0*A{3};
 V.M   = ~~A{3};
 A     = D;
@@ -95,36 +97,42 @@ Q     = Q | speye(n,n);
 for i = 1:length(B)
       B{i} = ~~B{i};
     E.B{i} = 0*B{i};
-    V.B{i} = (B{i} & Q & ~V.M)/8;   
+    try
+        V.B{i} = (B{i} & Q & ~V.M)/8;
+    catch
+        V.B{i} = B{i}/8;
+    end
 end
 
 % plasticity parameters
 %--------------------------------------------------------------------------
-m    = 3;                                         % number of plastic
-E.E  = sparse(n,m);   V.E  = sparse(n,m) + 1/16;  % potentiation                                             % potentiation
-E.F  = sparse(n,m);   V.F  = sparse(n,m) + 1/16;  % decay
+E.E  = sparse(n,4);   V.E  = sparse(n,4) + 1/16;  % potentiation                                             % potentiation
+E.F  = sparse(n,4);   V.F  = sparse(n,4) + 1/16;  % decay
 
 
 % modulatory connectivity - input-dependent scaling
 %--------------------------------------------------------------------------
 for i = 1:length(B)
     E.N{i} = 0*B{i};
-    V.N{i} = (B{i} & Q & V.M)/8;
+    try
+        V.N{i} = (B{i} & Q & V.M)/8;
+    catch
+        V.N{i} = spm_zeros(B{i});
+    end
 end
 
 % exogenous connectivity - where inputs enter
 %--------------------------------------------------------------------------
-C      = ~~C;
-E.C    = C*32 - 32;
-V.C    = C/32;
+C    = ~~C;
+E.C  = C*32 - 32;
+V.C  = C/32;
  
 % synaptic parameters
 %--------------------------------------------------------------------------
-m    = 4;                                         % number of intrinsic
 E.T  = sparse(n,4);   V.T  = sparse(n,4) + 1/16;  % time constants
-E.G  = sparse(n,m);   V.G  = sparse(n,m) + 1/16;  % intrinsic connectivity
+E.G  = sparse(n,4);   V.G  = sparse(n,4) + 1/16;  % intrinsic connectivity
 E.D  = sparse(n,n);   V.D  = Q/32;                % delay
-E.S  = 0;             V.S  = 1/32;                % slope of sigmoid
+E.S  = 0;             V.S  = 1/16;                % intrinsic gain
 
  
 % set stimulus parameters: onset and dispersion

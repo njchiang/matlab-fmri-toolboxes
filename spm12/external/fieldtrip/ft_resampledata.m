@@ -7,11 +7,13 @@ function [data] = ft_resampledata(cfg, data)
 %
 % The data should be organised in a structure as obtained from
 % the FT_PREPROCESSING function. The configuration should contain
-%   cfg.resamplefs = frequency at which the data will be resampled (default = 256 Hz)
-%   cfg.detrend    = 'no' or 'yes', detrend the data prior to resampling (no default specified, see below)
-%   cfg.demean     = 'no' or 'yes', baseline correct the data prior to resampling (default = 'no')
-%   cfg.feedback   = 'no', 'text', 'textbar', 'gui' (default = 'text')
-%   cfg.trials     = 'all' or a selection given as a 1xN vector (default = 'all')
+%   cfg.resamplefs  = frequency at which the data will be resampled (default = 256 Hz)
+%   cfg.detrend     = 'no' or 'yes', detrend the data prior to resampling (no default specified, see below)
+%   cfg.demean        = 'no' or 'yes', whether to apply baseline correction (default = 'no')
+%   cfg.baselinewindow = [begin end] in seconds, the default is the complete trial (default = 'all')
+%   cfg.feedback    = 'no', 'text', 'textbar', 'gui' (default = 'text')
+%   cfg.trials      = 'all' or a selection given as a 1xN vector (default = 'all')
+%   cfg.sampleindex = 'no' or 'yes', add a channel with the original sample indices (default = 'no')
 %
 % Instead of specifying cfg.resamplefs, you can also specify a time axis on
 % which you want the data to be resampled. This is usefull for merging data
@@ -51,7 +53,7 @@ function [data] = ft_resampledata(cfg, data)
 % Copyright (C) 2003-2006, FC Donders Centre, Markus Siegel
 % Copyright (C) 2004-2009, FC Donders Centre, Robert Oostenveld
 %
-% This file is part of FieldTrip, see http://www.ru.nl/neuroimaging/fieldtrip
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
 % for the documentation and details.
 %
 %    FieldTrip is free software: you can redistribute it and/or modify
@@ -67,20 +69,23 @@ function [data] = ft_resampledata(cfg, data)
 %    You should have received a copy of the GNU General Public License
 %    along with FieldTrip. If not, see <http://www.gnu.org/licenses/>.
 %
-% $Id: ft_resampledata.m 9829 2014-09-24 12:11:06Z jansch $
+% $Id$
 
-revision = '$Id: ft_resampledata.m 9829 2014-09-24 12:11:06Z jansch $';
+% these are used by the ft_preamble/ft_postamble function and scripts
+ft_revision = '$Id$';
+ft_nargin   = nargin;
+ft_nargout  = nargout;
 
 % do the general setup of the function
 ft_defaults
 ft_preamble init
-ft_preamble provenance
-ft_preamble trackconfig
 ft_preamble debug
 ft_preamble loadvar data
+ft_preamble provenance data
+ft_preamble trackconfig
 
-% the abort variable is set to true or false in ft_preamble_init
-if abort
+% the ft_abort variable is set to true or false in ft_preamble_init
+if ft_abort
   return
 end
 
@@ -90,33 +95,48 @@ end
 cfg = ft_checkconfig(cfg, 'renamed', {'blc', 'demean'});
 
 % set the defaults
-if ~isfield(cfg, 'resamplefs'), cfg.resamplefs = [];      end
-if ~isfield(cfg, 'time'),       cfg.time       = {};      end
-if ~isfield(cfg, 'detrend'),    cfg.detrend    = 'no';    end
-if ~isfield(cfg, 'demean'),     cfg.demean     = 'no';    end
-if ~isfield(cfg, 'feedback'),   cfg.feedback   = 'text';  end
-if ~isfield(cfg, 'trials'),     cfg.trials     = 'all';   end
-if ~isfield(cfg, 'method'),     cfg.method     = 'pchip'; end  % interpolation method
+cfg.resamplefs       = ft_getopt(cfg, 'resamplefs',      []);
+cfg.time             = ft_getopt(cfg, 'time',            {});
+cfg.detrend          = ft_getopt(cfg, 'detrend',         'no');
+cfg.demean           = ft_getopt(cfg, 'demean',          'no');
+cfg.baselinewindow   = ft_getopt(cfg, 'baselinewindow',  'all');
+cfg.feedback         = ft_getopt(cfg, 'feedback',        'text');
+cfg.trials           = ft_getopt(cfg, 'trials',          'all', 1);
+cfg.method           = ft_getopt(cfg, 'method',          'pchip');
+cfg.sampleindex      = ft_getopt(cfg, 'sampleindex',     'no');
+
+% give the user control over whether to use resample (applies anti-aliasing filter) or downsample (does not apply filter)
+cfg.resamplemethod = ft_getopt(cfg, 'resamplemethod', 'resample');
 
 % store original datatype
 convert = ft_datatype(data);
-  
+
 % check if the input data is valid for this function, this will convert it to raw if needed
 data = ft_checkdata(data, 'datatype', {'raw+comp', 'raw'}, 'feedback', 'yes');
-  
-%set default resampling frequency
-if isempty(cfg.resamplefs) && isempty(cfg.time),
+
+% set default resampling frequency
+if isempty(cfg.resamplefs) && isempty(cfg.time)
   cfg.resamplefs = 256;
 end
 
 % select trials of interest
-if ~strcmp(cfg.trials, 'all')
-  fprintf('selecting %d trials\n', length(cfg.trials));
-  data       = ft_selectdata(data, 'rpt', cfg.trials);
+tmpcfg = keepfields(cfg, {'trials', 'showcallinfo'});
+data   = ft_selectdata(tmpcfg, data);
+% restore the provenance information
+[cfg, data] = rollback_provenance(cfg, data);
+
+if strcmp(cfg.sampleindex, 'yes') && isfield(data, 'sampleinfo')
+  data.label{end+1} = 'sampleindex';
+  for i=1:size(data.sampleinfo,1)
+    % this works for one or more trials
+    data.trial{i}(end+1,:) = data.sampleinfo(i,1):data.sampleinfo(i,2);
+  end
+elseif strcmp(cfg.sampleindex, 'yes')
+  ft_warning('no sampleinfo present, cannot add sampleindex as channel');
 end
 
 % sampleinfo, if present, becomes invalid because of the resampling
-if isfield(data, 'sampleinfo'),
+if isfield(data, 'sampleinfo')
   data = rmfield(data, 'sampleinfo');
 end
 
@@ -124,7 +144,17 @@ usefsample = ~isempty(cfg.resamplefs);
 usetime    = ~isempty(cfg.time);
 
 if usefsample && usetime
-  error('you should either specify cfg.resamplefs or cfg.time')
+  ft_error('you should either specify cfg.resamplefs or cfg.time')
+end
+
+% whether to use downsample() or resample()
+if strcmp(cfg.resamplemethod, 'resample')
+  usedownsample = 0;
+elseif strcmp(cfg.resamplemethod, 'downsample')
+  ft_warning('using cfg.resamplemethod = ''downsample'', only use this if you have applied an anti-aliasing filter prior to downsampling!');
+  usedownsample = 1;
+else
+  ft_error('unknown resamplemethod ''%s''', cfg.resamplemethod);
 end
 
 % remember the original sampling frequency in the configuration
@@ -135,15 +165,15 @@ if usefsample
   % resample based on new sampling frequency
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
   ntr = length(data.trial);
-  
+
   ft_progress('init', cfg.feedback, 'resampling data');
   [fsorig, fsres] = rat(cfg.origfs./cfg.resamplefs);%account for non-integer fs
   cfg.resamplefs  = cfg.origfs.*(fsres./fsorig);%get new fs exact
-  
-  % make sure that the resampled time axes are aligned (this is to avoid 
+
+  % make sure that the resampled time axes are aligned (this is to avoid
   % rounding errors in the time axes). this procedure relies on the
   % fact that resample assumes all data outside the data window to be zero
-  % anyway. therefore, padding with zeros (to the left) before resampling 
+  % anyway. therefore, padding with zeros (to the left) before resampling
   % does not hurt
   firstsmp = zeros(ntr, 1);
   for itr = 1:ntr
@@ -151,98 +181,135 @@ if usefsample
   end
   minsmp = min(firstsmp);
   padsmp = round((firstsmp-minsmp).*cfg.origfs);
-  
+
   nchan  = numel(data.label);
   if any(padsmp~=0)
-    warning('not all of the trials have the same original time axis: to avoid rounding issues in the resampled time axes, data will be zero-padded to the left prior to resampling');
+    ft_warning('not all of the trials have the same original time axis: to avoid rounding issues in the resampled time axes, data will be zero-padded to the left prior to resampling');
   end
-  
+
   for itr = 1:ntr
     ft_progress(itr/ntr, 'resampling data in trial %d from %d\n', itr, ntr);
     if istrue(cfg.detrend)
       data.trial{itr} = ft_preproc_detrend(data.trial{itr});
     end
-    
+
+    % Compute mean based on a window (cfg.baselinewindow) or the whole
+    % trial. This does not support nan values anymore. Fix in
+    % ft_preproc_plyremoval. 
+    % previously --> bsl = nanmean(data.trial{itr},2);
+    if ~strcmp(cfg.baselinewindow, 'all')
+        begsample   = ceil(data.fsample*cfg.baselinewindow(1))+find(data.time{itr}==0);
+        endsample   = floor(data.fsample*cfg.baselinewindow(2))-1+find(data.time{itr}==0);        
+        [~,bsl]     = ft_preproc_baselinecorrect(data.trial{itr}, begsample, endsample);
+    else
+        [~,bsl]     = ft_preproc_baselinecorrect(data.trial{itr});
+    end
     % always remove the mean to avoid edge effects when there's a strong
-    % offset, the cfg.demean option is dealt with below
-    bsl             = mean(data.trial{itr},2);
+    % offset, the cfg.demean option is dealt with below    
     data.trial{itr} = data.trial{itr} - bsl(:,ones(1,size(data.trial{itr},2)));
-    
+
     % pad the data with zeros to the left
     data.trial{itr} = [zeros(nchan, padsmp(itr))     data.trial{itr}];
     data.time{itr}  = [data.time{itr}(1)-(padsmp(itr):-1:1)./cfg.origfs data.time{itr}];
-    
+
     % perform the resampling
-    if isa(data.trial{itr}, 'single')
-      % temporary convert this trial to double precision
-      data.trial{itr} = transpose(single(resample(double(transpose(data.trial{itr})),fsres,fsorig)));
-    else
-      data.trial{itr} = transpose(resample(transpose(data.trial{itr}),fsres,fsorig));
+    if usedownsample
+      if mod(fsorig, fsres) ~= 0
+        ft_error('when using cfg.resamplemethod = ''downsample'', new sampling rate needs to be a proper divisor of original sampling rate');
+      end
+
+      if isa(data.trial{itr}, 'single')
+        % temporary convert this trial to double precision
+        data.trial{itr} = transpose(single(downsample(double(transpose(data.trial{itr})),fsorig/fsres)));
+      else
+        data.trial{itr} = transpose(downsample(transpose(data.trial{itr}),fsorig/fsres));
+      end
+
+    else % resample (default)
+      if isa(data.trial{itr}, 'single')
+        % temporary convert this trial to double precision
+        data.trial{itr} = transpose(single(resample(double(transpose(data.trial{itr})),fsres,fsorig)));
+      else
+        data.trial{itr} = transpose(resample(transpose(data.trial{itr}),fsres,fsorig));
+      end
     end
+
     % update the time axis
     nsmp = size(data.trial{itr},2);
     data.time{itr} = data.time{itr}(1) + (0:(nsmp-1))/cfg.resamplefs;
-  
+
     %un-pad the data
     begindx         = ceil(cfg.resamplefs.*padsmp(itr)./cfg.origfs) + 1;
     data.time{itr}  = data.time{itr}(begindx:end);
     data.trial{itr} = data.trial{itr}(:, begindx:end);
-    
-    % add back the mean 
+
+    % add back the mean
     if ~strcmp(cfg.demean, 'yes')
       data.trial{itr} = data.trial{itr} + bsl(:,ones(1,numel(data.time{itr})));
-    end    
+    end
 
   end % for itr
   ft_progress('close');
-  
+
   % specify the new sampling frequency in the output
   data.fsample = cfg.resamplefs;
-  
+
 elseif usetime
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
   % resample based on new time axes for each trial
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
   ntr = length(data.trial);
-  
+
   ft_progress('init', cfg.feedback, 'resampling data');
   for itr = 1:ntr
     ft_progress(itr/ntr, 'resampling data in trial %d from %d\n', itr, ntr);
-   
+
     if istrue(cfg.detrend)
       data.trial{itr} = ft_preproc_detrend(data.trial{itr});
     end
+
+
     
+    % Compute mean based on a window (cfg.baselinewindow) or the whole
+    % trial. This does not support nan values anymore. Fix in
+    % ft_preproc_plyremoval. 
+    % previously --> bsl = nanmean(data.trial{itr},2);
+    if ~strcmp(cfg.baselinewindow, 'all')
+        begsample   = ceil(data.fsample*cfg.baselinewindow(1))+find(data.time{itr}==0);
+        endsample   = floor(data.fsample*cfg.baselinewindow(2))-1+find(data.time{itr}==0);        
+        [dum,bsl]   = ft_preproc_baselinecorrect(data.trial{itr}, begsample, endsample);           
+    else
+        [dum,bsl]   = ft_preproc_baselinecorrect(data.trial{itr});               
+    end
     % always remove the mean to avoid edge effects when there's a strong
-    % offset, the cfg.demean option is dealt with below
-    bsl             = mean(data.trial{itr},2);
+    % offset, the cfg.demean option is dealt with below    
     data.trial{itr} = data.trial{itr} - bsl(:,ones(1,size(data.trial{itr},2)));
-    
+
     % perform the resampling
-    if length(data.time{itr})>1,
+    if length(data.time{itr})>1
       data.trial{itr} = interp1(data.time{itr}', data.trial{itr}', cfg.time{itr}', cfg.method)';
     else
       data.trial{itr} = repmat(data.trial{itr}, [1 length(cfg.time{itr}')]);
     end
     % update the time axis
     data.time{itr} = cfg.time{itr};
-    
-    % add back the mean 
+
+    % add back the mean
     if ~strcmp(cfg.demean, 'yes')
       data.trial{itr} = data.trial{itr} + bsl(:,ones(1,numel(data.time{itr})));
     end
-    
+
   end % for itr
   ft_progress('close');
-  
+
   % specify the new sampling frequency in the output
   t1 = cfg.time{1}(1);
   t2 = cfg.time{1}(2);
   data.fsample = 1/(t2-t1);
-  
+
 end % if usefsample or usetime
 
-fprintf('original sampling rate = %d Hz\nnew sampling rate = %d Hz\n', cfg.origfs, data.fsample);
+ft_info('original sampling rate = %d Hz\nnew sampling rate = %d Hz\n', cfg.origfs, data.fsample);
 
 % convert back to input type if necessary
 switch convert
@@ -255,7 +322,7 @@ end
 % do the general cleanup and bookkeeping at the end of the function
 ft_postamble debug
 ft_postamble trackconfig
-ft_postamble provenance
-ft_postamble previous data
-ft_postamble history data
-ft_postamble savevar data
+ft_postamble previous   data
+ft_postamble provenance data
+ft_postamble history    data
+ft_postamble savevar    data

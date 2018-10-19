@@ -19,7 +19,7 @@ function [hdr] = read_ctf_res4(fname)
 % modifications Copyright (C) 2002, Ole Jensen
 % modifications Copyright (C) 2003, Robert Oostenveld
 %
-% This file is part of FieldTrip, see http://www.ru.nl/neuroimaging/fieldtrip
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
 % for the documentation and details.
 %
 %    FieldTrip is free software: you can redistribute it and/or modify
@@ -35,7 +35,7 @@ function [hdr] = read_ctf_res4(fname)
 %    You should have received a copy of the GNU General Public License
 %    along with FieldTrip. If not, see <http://www.gnu.org/licenses/>.
 %
-% $Id: read_ctf_res4.m 7123 2012-12-06 21:21:38Z roboos $
+% $Id$
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % read header information
@@ -46,14 +46,14 @@ fid = fopen(fname,'r','ieee-be');
 % Check if header file exist
 if fid == -1
   errMsg = strcat('Could not open header file:',fname);
-  error(errMsg);
+  ft_error(errMsg);
 end
 
 % First 8 bytes contain filetype, check is fileformat is correct.
 % This function was written for MEG41RS, but also seems to work for some other formats
 CTFformat=char(fread(fid,8,'uint8'))';
 if ~strcmp(CTFformat(1,1:7),'MEG41RS') && ~strcmp(CTFformat(1,1:7),'MEG42RS') && ~strcmp(CTFformat(1,1:7),'MEG3RES')
-  warning('res4 format (%s) is not supported for file %s, trying anyway...', CTFformat(1,1:7), fname);
+  ft_warning('res4 format (%s) is not supported for file %s, trying anyway...', CTFformat(1,1:7), fname);
 end
 
 % Read the initial parameters

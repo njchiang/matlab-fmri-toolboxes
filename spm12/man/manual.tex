@@ -8,6 +8,8 @@ pdfauthor={The SPM Developers},
 pdfsubject={Statistical Parametric Mapping},
 pdfkeywords={neuroimaging, MRI, PET, EEG, MEG, SPM}
 ]{hyperref}
+\usepackage{matlab-prettifier}
+\usepackage[T1]{fontenc}
 \pagestyle{headings}
 \bibliographystyle{plain}
 
@@ -23,6 +25,7 @@ pdfkeywords={neuroimaging, MRI, PET, EEG, MEG, SPM}
 \marginparsep=5mm
 \marginparwidth=21mm
 \footskip=10mm
+\mlttfamily
 
 \newcommand{\matlab}{\textsc{Matlab}}
 
@@ -57,7 +60,10 @@ James Kilner \\
 Vladimir Litvak \\
 Rosalyn Moran \\
 Will Penny \\
+Adeel Razi \\
 Klaas Stephan \\
+Sungho Tak \\
+Peter Zeidman \\
 \medskip
 Darren Gitelman \\
 Rik Henson \\
@@ -161,13 +167,15 @@ Institute of Neurology, UCL\\
 \include{dcm/dcm}
 \include{ppi/ppi}
 \include{bms/bms}
+\include{dcm_rs/dcm_rs}
 \include{meg_sloc/meg_sloc}
 \include{mmn/mmn}
 \include{meeg_artefact/meeg_artefact}
-%\include{multimodal/multimodal}
+\include{multi/multi}
 \include{dcm_ir/dcm_ir}
 \include{dcm_phase/dcm_phase}
 \include{dcm_csd/dcm_csd}
+\include{dcm_fnirs/dcm_fnirs}
 \include{dartelguide/dartelguide}
 
 %%%%%% Appendix %%%%%%%

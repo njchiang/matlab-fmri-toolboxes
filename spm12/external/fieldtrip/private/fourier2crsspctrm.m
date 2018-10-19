@@ -19,7 +19,7 @@ function output = fourier2crsspctrm(cfg, freq)
 %                    input is taken.
 %
 
-% This file is part of FieldTrip, see http://www.ru.nl/neuroimaging/fieldtrip
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
 % for the documentation and details.
 %
 %    FieldTrip is free software: you can redistribute it and/or modify
@@ -35,7 +35,7 @@ function output = fourier2crsspctrm(cfg, freq)
 %    You should have received a copy of the GNU General Public License
 %    along with FieldTrip. If not, see <http://www.gnu.org/licenses/>.
 %
-% $Id: fourier2crsspctrm.m 8285 2013-06-28 10:38:18Z roboos $
+% $Id$
 
 if ~isfield(cfg, 'channel'),     cfg.channel     = {'all'};                       end
 if ~isfield(cfg, 'channelcmb'),  cfg.channelcmb  = {};                            end
@@ -44,14 +44,14 @@ if ~isfield(cfg, 'keepfourier'), cfg.keepfourier = 'no';                        
 if ~isfield(cfg, 'feedback'),    cfg.feedback    = 'text';                        end
 
 %select the channels on which the power-spectra will be computed
-chn     = channelselection(cfg.channel,freq.label);
+chn = ft_channelselection(cfg.channel,freq.label);
 for j = 1:length(chn)
   chnindx(j,1) = find(strcmp(chn(j), freq.label));
   %chnindx(j,1) = find(strcmp(chn{j}, freq.label));
 end
 
 %convert the channelcombinations to indices
-chncmb  = channelcombination(cfg.channelcmb, freq.label);
+chncmb  = ft_channelcombination(cfg.channelcmb, freq.label);
 cmbindx = zeros(size(chncmb,1),2);
 for j = 1:size(chncmb,1)
   cmbindx(j,1) = find(strcmp(chncmb(j,1), freq.label));
@@ -68,7 +68,7 @@ Nchn   = length(chnindx);
 Ncmb   = size(cmbindx,1);
 
 %%FIXME
-%if Ntim>1, error('correct handling of time-frequency data is not yet implemented, no information about tapers is available'); end
+%if Ntim>1, ft_error('correct handling of time-frequency data is not yet implemented, no information about tapers is available'); end
 
 %keeping track of the tapers
 %in the case of tfr fourier-data cumtapcnt is highly redundant; for each frequency
@@ -107,18 +107,18 @@ output.label  = chn;
 output.labelcmb(:,1) = freq.label(cmbindx(:,1));
 output.labelcmb(:,2) = freq.label(cmbindx(:,2));
 output.cumtapcnt = freq.cumtapcnt;
-try, output.grad = freq.grad; end;
-try, output.time = freq.time; end;
+try, output.grad = freq.grad; end
+try, output.time = freq.time; end
 output.powspctrm = powspctrm;
 output.crsspctrm = crsspctrm;
 if strcmp(cfg.keepfourier, 'yes'), output.fourierspctrm = freq.fourierspctrm; end 
 
-if isempty(output.crsspctrm), output = rmfield(output, 'crsspctrm'); end;
-if isempty(output.labelcmb ), output = rmfield(output, 'labelcmb' ); end;
+if isempty(output.crsspctrm), output = rmfield(output, 'crsspctrm'); end
+if isempty(output.labelcmb ), output = rmfield(output, 'labelcmb' ); end
 
 % add information about the version of this function to the configuration
 cfg.version.name = mfilename('fullpath');
-cfg.version.id = '$Id: fourier2crsspctrm.m 8285 2013-06-28 10:38:18Z roboos $';
+cfg.version.id = '$Id$';
 
 % remember the configuration details of the input data
 try, cfg.previous = freq.cfg; end

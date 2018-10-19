@@ -1,23 +1,24 @@
 function channels = spm_cfg_eeg_channel_selector(jobtree)
 % generic M/EEG channel selector based on label and type
-%_______________________________________________________________________
-% Copyright (C) 2010 Wellcome Trust Centre for Neuroimaging
+%__________________________________________________________________________
+% Copyright (C) 2010-2016 Wellcome Trust Centre for Neuroimaging
 
 % Vladimir Litvak
-% $Id: spm_cfg_eeg_channel_selector.m 5675 2013-10-09 14:27:17Z vladimir $
+% $Id: spm_cfg_eeg_channel_selector.m 6926 2016-11-09 22:13:19Z guillaume $
 
 if nargin == 0 || ischar(jobtree)
     chanall = cfg_const;
     chanall.tag = 'all';
     chanall.name = 'All';
     chanall.val = {'all'};
+    chanall.help = {''};
     
     type = cfg_menu;
     type.tag = 'type';
     type.name = 'Select channels by type';
-    type.help = {'Select channels by type'};
-    type.labels = {'MEG', 'MEGPLANAR', 'MEGMAG', 'MEGGRAD', 'MEGCOMB','EEG', 'EOG', 'ECG', 'EMG', 'LFP', 'PHYS', 'Other', 'REF', 'REFMAG', 'REFGRAD'};
-    type.values = {'MEG', 'MEGPLANAR', 'MEGMAG', 'MEGGRAD', 'MEGCOMB','EEG', 'EOG', 'ECG', 'EMG', 'LFP', 'PHYS', 'Other', 'REF', 'REFMAG', 'REFGRAD'};
+    type.help = {'Select channels by type.'};
+    type.labels = {'MEG', 'MEGPLANAR', 'MEGMAG', 'MEGGRAD', 'MEGCOMB','EEG', 'EOG', 'ECG', 'EMG', 'LFP', 'SRC', 'PHYS', 'ILAM', 'Other', 'REF', 'REFMAG', 'REFGRAD'};
+    type.values = {'MEG', 'MEGPLANAR', 'MEGMAG', 'MEGGRAD', 'MEGCOMB','EEG', 'EOG', 'ECG', 'EMG', 'LFP', 'SRC', 'PHYS', 'ILAM', 'Other', 'REF', 'REFMAG', 'REFGRAD'};
     
     chan = cfg_entry;
     chan.tag = 'chan';
@@ -38,6 +39,7 @@ if nargin == 0 || ischar(jobtree)
     chanfile.name = 'Channel file';
     chanfile.filter = 'mat';
     chanfile.num = [1 1];
+    chanfile.help = {''};
     
     channels = cfg_repeat;
     channels.tag = 'channels';
@@ -50,6 +52,7 @@ if nargin == 0 || ischar(jobtree)
     end
     channels.num = [1 Inf];
     channels.val = {chanall};
+    channels.help = {'Channel selection.'};
 else
     channels = {};
     for j = 1:numel(jobtree)

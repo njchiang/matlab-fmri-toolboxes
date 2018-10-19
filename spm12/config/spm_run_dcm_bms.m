@@ -14,13 +14,13 @@ function out = spm_run_dcm_bms(job)
 % Note: All functions use the negative free energy (F) as an approximation
 % to the log model evidence.
 %__________________________________________________________________________
-% Copyright (C) 2009-2014 Wellcome Trust Centre for Neuroimaging
+% Copyright (C) 2009-2015 Wellcome Trust Centre for Neuroimaging
 
 % CC Chen & Maria Joao Rosa
-% $Id: spm_run_dcm_bms.m 6203 2014-09-26 14:36:54Z will $
+% $Id: spm_run_dcm_bms.m 7101 2017-06-08 12:36:13Z peter $
 
 
-SVNid = '$Rev: 6203 $';
+SVNid = '$Rev: 7101 $';
 
 %-Say hello
 %--------------------------------------------------------------------------
@@ -74,7 +74,7 @@ if bma_do
         if data_se
             load(job.sess_dcm{1}(1).dcmmat{1})
         else
-            spm('alert','Please specify DCM.mat files or model_space.mat to do BMA!','Error');
+            spm('alert*','Please specify DCM.mat files or model_space.mat to do BMA.','Error');
             return
         end
     end
@@ -94,10 +94,10 @@ if bma_do
 else
     if ld_msp
         fprintf('%-40s: ','Loading model space')                        %-#
-        load(job.model_sp{1});
+        load(job.model_sp{1},'subj');
         fprintf('%30s\n','...done')                                     %-#
         if ~exist('subj','var')
-            spm('alert','Incorrect model space file! File must contain ''subj'' structure.','Error');
+            spm('alert*',{'Incorrect model space file.','File must contain ''subj'' structure.'},'Error');
             return
         end
     end
@@ -112,9 +112,13 @@ N      = {};                % Models
 %--------------------------------------------------------------------------
 if  ld_f
     data      = job.load_f{1};
-    load(data);
+    load(data,'F');
+    if ~exist('F','var')
+        spm('alert*',{'Incorrect log-evidence matrix file.','File must contain ''F'' matrix.'},'Error');
+        return
+    end
     nm        = size(F,2);                                % No of Models
-    ns        = size(F,1);                                % No of Models
+    ns        = size(F,1);                                % No of Subjects
     N         = 1:nm;
     subj      = [];                                       % subj structure
     f_fname   = data;                                     % LogE file name
@@ -142,7 +146,7 @@ else
     
     % Check if No of models > 2
     if nm < 2
-        spm('alert','Please select more than one file','Error');
+        spm('alert*','Please select more than one file.','Error');
         return
     end
     
@@ -196,6 +200,8 @@ else
                         
                     else
                         
+                        tmp = subj(k).sess(h).model(j).fname; 
+                        DCM = load(tmp); 
                         F_sess = [F_sess,subj(k).sess(h).model(j).F];
                         
                     end
@@ -210,10 +216,11 @@ else
                         
                         M   = DCM.DCM.M;
                         
-                        if isfield(DCM.DCM, 'xY')
-                            Y = DCM.DCM.xY;  % not fMRI
-                        else
+                        str = spm_dcm_identify(DCM.DCM);
+                        if strcmp(str,'fMRI') || strcmp(str,'fMRI_CSD')
                             Y = DCM.DCM.Y;   % fMRI
+                        else
+                            Y = DCM.DCM.xY;  % not fMRI
                         end
                         
                         if isfield(M,'FS')
@@ -246,7 +253,7 @@ else
                 end
             end
         else
-            spm('alert','The number of sessions/models should be the same for all subjects!','Error');
+            spm('alert*','The number of sessions/models should be the same for all subjects.','Error');
             return         
         end
         
@@ -275,7 +282,7 @@ if isfield(job.family_level,'family_file')
         m_indx  = 1:nm;
         
         if nfam ~= npart || npart == 1 || maxpart > npart
-            spm('alert','Invalid family file!','Error');
+            spm('alert*','Invalid family file.','Error');
             return
         end
     else
@@ -307,7 +314,7 @@ else
         nmodfam = length(m_indx);
         
         if nfam ~= npart || npart == 1 || maxpart > npart || nmodfam > nm
-            spm('alert','Invalid family!','Error');
+            spm('alert*','Invalid family.','Error');
             return
         end
         
@@ -347,7 +354,7 @@ if strcmp(method,'FFX')
                         indx  = find(family.partition==bma_fam);
                         post  = model.post(indx);
                     else
-                        spm('alert','Incorrect family for BMA!','Error');
+                        spm('alert*','Incorrect family for BMA.','Error');
                         return
                     end
                 end
@@ -392,16 +399,20 @@ else
     if ~do_family
         [exp_r,xp,r_samp,g_post] = spm_BMS_gibbs(F);
         model.g_post             = g_post;
-        alpha                    = [];
-        model.alpha = alpha;
+        model.alpha = exp_r*(nm+ns);
         model.exp_r = exp_r;
         model.xp    = xp;
         family      = [];
         
         % Compute protected xp's
-        [tmp1,tmp2,tmp3,pxp,bor]=spm_BMS(F);
-        model.pxp=pxp;
-        model.bor=bor;
+        posterior.a=model.alpha;
+        posterior.r=g_post';
+        priors.a=ones(1,nm);
+        model.bor = spm_BMS_bor (F',posterior,priors);
+
+        % Compute protected exceedance probs - Eq 7 in Rigoux et al.
+        model.pxp=(1-model.bor)*xp+model.bor/nm;
+        
     else
         Ffam           = F(:,sort(m_indx));
         [family,model] = spm_compare_families(Ffam,family);
@@ -412,10 +423,11 @@ else
     %-Display result
     if do_family
         P = spm_api_bmc(sumF,N,model.exp_r,model.xp,family);
+        
     else
         P = spm_api_bmc(sumF,N,model.exp_r,model.xp);
         
-        % Plot protexted xp's
+        % Plot protected xp's
         nm_tmp = length(N);
         Fpxp  = spm_figure('Create','Graphics','BMS: results ...');
         figure(Fpxp);

@@ -78,7 +78,7 @@ function [D] = spm_eeg_invert_classic(D,val)
 % A general Bayesian treatment for MEG source reconstruction incorporating lead field uncertainty.
 % Neuroimage 60(2), 1194-1204 doi:10.1016/j.neuroimage.2012.01.077.
 
-% $Id: spm_eeg_invert_classic.m 6077 2014-06-30 16:55:03Z spm $
+% $Id: spm_eeg_invert_classic.m 6815 2016-06-20 09:08:18Z gareth $
 
 
 
@@ -357,10 +357,14 @@ Ntrialtypes=length(trial);
 YY    = 0;
 
 N=0;
+
 badtrialind=D.badtrials;
+Ik=[]; %% keep a record of trials used
 for j = 1:Ntrialtypes,                          % pool over conditions
     c     = D.indtrial(trial{j});     % and trials
-    c=setxor(c,badtrialind); %% ignore bad trials
+    [c1,ib]=intersect(c,badtrialind); %% remove bad trials ib if there are any
+    c=c(setxor(1:length(c),ib));
+    Ik=[Ik c];
     Nk    = length(c);
     for k = 1:Nk
         Y     = A*D(Ic,It,c(k));
@@ -422,7 +426,8 @@ for j = 1:Ntrialtypes,
     
     UY{j} = sparse(0);
     c       = D.indtrial(trial{j});
-    c=setxor(c,badtrialind); %% ignore bad trials
+    [c1,ib]=intersect(c,badtrialind); %% remove bad trials ib if there are any
+    c=c(setxor(1:length(c),ib));
     Nk    = length(c);
        
     % loop over epochs
@@ -466,7 +471,7 @@ AQeA   = A*QE*A';           % Note that here it is A*A'
 Qe{1}  = AQeA/(trace(AQeA)); % it means IID noise in virtual sensor space
 
 %Q0          = Qe0*trace(AYYA)*Qe{1}*Nr; %% fixed (min) level of sensor space variance- this is divided by Nr later in spm_reml_sc
-Q0          = Qe0*trace(AYYA)*Qe{1}; %% fixed (min) level of sensor space variance
+Q0          = Qe0*trace(AYYA)*Qe{1}./sum(Nn); %% fixed (min) level of sensor space variance
 
 
 %==========================================================================
@@ -492,17 +497,36 @@ switch(type)
             LQpL{end + 1}.q = UL*q;     
         end
         
-    case {'EBB'}
-        % create beamforming prior. See:
-        % Source reconstruction accuracy of MEG and EEG Bayesian inversion approaches.
-        %Belardinelli P, Ortiz E, Barnes G, Noppeney U, Preissl H. PLoS One. 2012;7(12):e51985.
+%     case {'EBB'}
+%         % create beamforming prior. See:
+%         % Source reconstruction accuracy of MEG and EEG Bayesian inversion approaches.
+%         %Belardinelli P, Ortiz E, Barnes G, Noppeney U, Preissl H. PLoS One. 2012;7(12):e51985.
+%         %------------------------------------------------------------------
+%         InvCov = spm_inv(YY);
+%         allsource = zeros(Ns,1);
+%         Sourcepower = zeros(Ns,1);
+%         for bk = 1:Ns
+%             normpower = 1/(UL(:,bk)'*UL(:,bk));
+%             Sourcepower(bk) = 1/(UL(:,bk)'*InvCov*UL(:,bk));
+%             allsource(bk) = Sourcepower(bk)./normpower;
+%         end
+%         allsource = allsource/max(allsource);   % Normalise
+%         
+%         Qp{1} = diag(allsource);
+%         LQpL{1} = UL*diag(allsource)*UL';
+   case {'EBB'}
+        % create SMOOTH beamforming prior. 
+        disp('NB smooth EBB algorithm !');
         %------------------------------------------------------------------
-        InvCov = spm_inv(YY);
-        allsource = zeros(Ns,1);
-        Sourcepower = zeros(Ns,1);
+        InvCov = spm_inv(AYYA);
+        allsource = sparse(Ns,1);
+        Sourcepower = sparse(Ns,1);
         for bk = 1:Ns
-            normpower = 1/(UL(:,bk)'*UL(:,bk));
-            Sourcepower(bk) = 1/(UL(:,bk)'*InvCov*UL(:,bk));
+            q               = QG(:,bk);
+            
+            smthlead = UL*q;     %% THIS IS WHERE THE SMOOTHNESS GETS ADDED
+            normpower = 1/(smthlead'*smthlead);
+            Sourcepower(bk) = 1/(smthlead'*InvCov*smthlead);
             allsource(bk) = Sourcepower(bk)./normpower;
         end
         allsource = allsource/max(allsource);   % Normalise
@@ -592,7 +616,8 @@ switch(type)
         %------------------------------------------------------------------
         
         
-        [Cy,h,Ph,F] = spm_sp_reml(AYYA,[],[Qe LQpL],1);
+        %[Cy,h,Ph,F] = spm_sp_reml(AYYA,[],[Qe LQpL],1);
+        [Cy,h,Ph,F] = spm_sp_reml(AYYA,[],[Qe LQpL],Nn);
         
         
         % Spatial priors (QP)
@@ -626,7 +651,7 @@ switch(type)
         
         
         
-        [Cy,h,Ph,F] = spm_reml_sc(AYYA,[],[Qe LQpL],1,-4,16,Q0);
+        [Cy,h,Ph,F] = spm_reml_sc(AYYA,[],[Qe LQpL],Nn,-4,16,Q0);
         
         % Spatial priors (QP)
         %------------------------------------------------------------------
@@ -671,7 +696,7 @@ if rank(AYYA)~=size(A,1),
 end;
 
 
-[Cy,h,Ph,F]= spm_reml_sc(AYYA,[],Q,1,-4,16,Q0);
+[Cy,h,Ph,F]= spm_reml_sc(AYYA,[],Q,Nn,-4,16,Q0);
 
 
 
@@ -734,11 +759,14 @@ inverse.J   = J;                    % Conditional expectation
 inverse.Y      = Y;                    % ERP data (reduced)
 inverse.L      = UL;                   % Lead-field (reduced)
 inverse.qC     = Cq;                   % spatial covariance
+inverse.tempU  = U;                    % temporal SVD 
+inverse.V      = V;                    % temporal modes
 inverse.qV     = Vq;                   % temporal correlations
 inverse.T      = S;                    % temporal projector
 inverse.U      = {A};                    % spatial projector
 inverse.Is     = Is;                   % Indices of active dipoles
 inverse.It     = It;                   % Indices of time bins
+inverse.Ik     =Ik;                    %% indices of trials used
 try
     inverse.Ic{1}     = Ic;                   % Indices of good channels
 catch

@@ -8,7 +8,7 @@ function [nse] = read_neuralynx_nse(filename, begrecord, endrecord)
 
 % Copyright (C) 2005-2007, Robert Oostenveld
 %
-% This file is part of FieldTrip, see http://www.ru.nl/neuroimaging/fieldtrip
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
 % for the documentation and details.
 %
 %    FieldTrip is free software: you can redistribute it and/or modify
@@ -24,7 +24,7 @@ function [nse] = read_neuralynx_nse(filename, begrecord, endrecord)
 %    You should have received a copy of the GNU General Public License
 %    along with FieldTrip. If not, see <http://www.gnu.org/licenses/>.
 %
-% $Id: read_neuralynx_nse.m 8135 2013-05-17 15:52:14Z roboos $
+% $Id$
 
 if nargin<2
   begrecord = 1;
@@ -63,9 +63,9 @@ end
 if begrecord==0 && endrecord==0
   % only read the header
 elseif begrecord<1
-  error('cannot read before the first record');
+  ft_error('cannot read before the first record');
 elseif begrecord>NRecords
-  error('cannot read beyond the last record')
+  ft_error('cannot read beyond the last record')
 elseif endrecord>NRecords
   endrecord = NRecords;
 end

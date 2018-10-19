@@ -9,11 +9,11 @@ function [grid] = ft_source2grid(source)
 % The resulting grid can be used in the configuration of another
 % run of FT_SOURCEANALYSIS.
 %
-% See also SOURCE2SPARSE, SOURCE2FULL
+% See also FTSOURCE2SPARSE, FT_SOURCE2FULL
 
 % Copyright (C) 2004, Robert Oostenveld
 %
-% This file is part of FieldTrip, see http://www.ru.nl/neuroimaging/fieldtrip
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
 % for the documentation and details.
 %
 %    FieldTrip is free software: you can redistribute it and/or modify
@@ -29,23 +29,13 @@ function [grid] = ft_source2grid(source)
 %    You should have received a copy of the GNU General Public License
 %    along with FieldTrip. If not, see <http://www.gnu.org/licenses/>.
 %
-% $Id: ft_source2grid.m 7123 2012-12-06 21:21:38Z roboos $
+% $Id$
 
 ft_defaults
 
-% these are always supposed to be present
-grid.pos     = source.pos;
-grid.inside  = source.inside;
-grid.outside = source.outside;
+grid = keepfields(source, {'pos', 'tri', 'inside', 'outside', 'xgrid', 'ygrid', 'zgrid', 'dim'});
 
-% these are optional
-try, grid.xgrid   = source.xgrid; end
-try, grid.ygrid   = source.ygrid; end
-try, grid.zgrid   = source.zgrid; end
-try, grid.dim     = source.dim;   end
-try, grid.tri     = source.tri;   end % only in case of a tesselated/triangulated cortical sheet source model
-
-if ~isfield(grid, 'dim') && isfield(grid, 'xgrid') && isfield(grid, 'ygrid') && isfield(grid, 'zgrid') 
+if ~isfield(grid, 'dim') && isfield(grid, 'xgrid') && isfield(grid, 'ygrid') && isfield(grid, 'zgrid')
   grid.dim = [length(grid.xgrid) length(grid.ygrid) length(grid.zgrid)];
 end
 
@@ -54,9 +44,11 @@ if issubfield(source, 'filter')
 elseif issubfield(source, 'avg.filter')
   grid.filter = source.avg.filter;
 elseif issubfield(source, 'trial.filter')
-  error('single trial filters are not supported here');
+  ft_error('single trial filters are not supported here');
 end
 
-if isfield(source, 'leadfield')
+if issubfield(source, 'leadfield')
   grid.leadfield = source.leadfield;
+elseif issubfield(source, 'avg.leadfield')
+  grid.leadfield = source.avg.leadfield;
 end

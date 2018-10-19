@@ -1,10 +1,10 @@
 function factorial_design = spm_cfg_factorial_design
 % SPM Configuration file for second-level models
 %__________________________________________________________________________
-% Copyright (C) 2005-2014 Wellcome Trust Centre for Neuroimaging
+% Copyright (C) 2005-2016 Wellcome Trust Centre for Neuroimaging
 
 % Will Penny
-% $Id: spm_cfg_factorial_design.m 6011 2014-05-22 17:53:54Z guillaume $
+% $Id: spm_cfg_factorial_design.m 6952 2016-11-25 16:03:13Z guillaume $
 
 
 %--------------------------------------------------------------------------
@@ -28,6 +28,8 @@ scans.help    = {'Select the images.  They must all have the same image dimensio
 scans.filter  = {'image','mesh'};
 scans.ufilter = '.*';
 scans.num     = [1 Inf];
+scans.preview = @(f) spm_check_registration(char(f));
+
 
 %==========================================================================
 % t1 One-sample t-test
@@ -48,6 +50,7 @@ scans1.help    = {'Select the images from sample 1.  They must all have the same
 scans1.filter  = {'image','mesh'};
 scans1.ufilter = '.*';
 scans1.num     = [1 Inf];
+scans1.preview = @(f) spm_check_registration(char(f));
 
 %--------------------------------------------------------------------------
 % scans2 Group 2 scans
@@ -59,6 +62,7 @@ scans2.help    = {'Select the images from sample 2.  They must all have the same
 scans2.filter  = {'image','mesh'};
 scans2.ufilter = '.*';
 scans2.num     = [1 Inf];
+scans2.preview = @(f) spm_check_registration(char(f));
 
 %--------------------------------------------------------------------------
 % dept Independence
@@ -194,6 +198,7 @@ scans.help    = {'Select the images.  They must all have the same image dimensio
 scans.filter  = {'image','mesh'};
 scans.ufilter = '.*';
 scans.num     = [1 Inf];
+scans.preview = @(f) spm_check_registration(char(f));
 
 %--------------------------------------------------------------------------
 % c Vector
@@ -299,7 +304,7 @@ levels.tag     = 'levels';
 levels.name    = 'Levels';
 levels.help    = {'Enter number of levels for this factor, eg. 2.'};
 levels.strtype = 'n';
-levels.num     = [Inf 1];
+levels.num     = [1 1];
 
 %--------------------------------------------------------------------------
 % fact Factor
@@ -732,7 +737,7 @@ cov.help    = {'Add a new covariate to your experimental design.'};
 generic        = cfg_repeat;
 generic.tag    = 'generic';
 generic.name   = 'Covariates';
-generic.help   = {'This option allows for the specification of covariates and nuisance variables. Unlike SPM94/5/6, where the design was partitioned into effects of interest and nuisance effects for the computation of adjusted data and the F-statistic (which was used to thresh out voxels where there appeared to be no effects of interest), SPM does not partition the design in this way anymore. The only remaining distinction between effects of interest (including covariates) and nuisance effects is their location in the design matrix, which we have retained for continuity.  Pre-specified design matrix partitions can be entered.'};
+generic.help   = {'This option allows for the specification of covariates and nuisance variables (note that SPM does not make any distinction between effects of interest (including covariates) and nuisance effects).'};
 generic.values = {cov};
 generic.num    = [0 Inf];
 
@@ -742,12 +747,12 @@ generic.num    = [0 Inf];
 cov         = cfg_files;
 cov.tag     = 'files';
 cov.name    = 'File(s)';
-cov.val{1}  = {''};
+cov.val     = {{''}};
 cov.help    = {
-                     'Select the *.mat/*.txt file(s) containing details of your multiple covariates. '
-                     ''
-                     'You will first need to create a *.mat file containing a matrix R or a *.txt file containing the covariates. Each column of R will contain a different covariate. Unless the covariates names are given in a cell array called ''names'' in the MAT-file containing variable R, the covariates will be named R1, R2, R3, ..etc.'
-                     }';
+               'Select the *.mat/*.txt file(s) containing details of your multiple covariates. '
+               ''
+               'You will first need to create a *.mat file containing a matrix R or a *.txt file containing the covariates. Each column of R will contain a different covariate. Unless the covariates names are given in a cell array called ''names'' in the MAT-file containing variable R, the covariates will be named R1, R2, R3, ..etc.'
+              }';
 cov.filter  = 'mat';
 cov.ufilter = '.*';
 cov.num     = [0 Inf];
@@ -1030,14 +1035,15 @@ factorial_design.tag  = 'factorial_design';
 factorial_design.name = 'Factorial design specification';
 factorial_design.val  = {dir des generic generic2 masking globalc globalm};
 factorial_design.help = {
-                         'This interface configures the design matrix, describing the general linear model, data specification, and other parameters necessary for the statistical analysis. These parameters are saved in a configuration file (SPM.mat), which can then be passed on to spm_spm.m which estimates the design. This is achieved by pressing the ''Estimate'' button. Inference on these estimated parameters is then handled by the SPM results section. '
-                         ''
-                         'This interface is used for setting up analyses of PET data, morphometric data, or ''second level'' (''random effects'') fMRI data, where first level models can be used to produce appropriate summary data that are then used as raw data for the second-level analysis. For example, a simple t-test on contrast images from the first-level turns out to be a random-effects analysis with random subject effects, inferring for the population based on a particular sample of subjects.'
-                         ''
-                         'A separate interface handles design configuration for first level fMRI time series.'
-                         ''
-                         'Various data and parameters need to be supplied to specify the design (1) the image files, (2) indicators of the corresponding condition/subject/group (2) any covariates, nuisance variables, or design matrix partitions (3) the type of global normalisation (if any) (4) grand mean scaling options (5) thresholds and masks defining the image volume to analyse. The interface supports a comprehensive range of options for all these parameters.'
-}';
+    'Configuration of the design matrix, describing the general linear model, data specification, and other parameters necessary for the statistical analysis.'
+    'These parameters are saved in a configuration file (SPM.mat), which can then be passed on to spm_spm.m which estimates the design. This is achieved by pressing the ''Estimate'' button. Inference on these estimated parameters is then handled by the SPM results section. '
+    ''
+    'This interface is used for setting up analyses of PET data, morphometric data, or ''second level'' (''random effects'') fMRI data, where first level models can be used to produce appropriate summary data that are then used as raw data for the second-level analysis. For example, a simple t-test on contrast images from the first-level turns out to be a random-effects analysis with random subject effects, inferring for the population based on a particular sample of subjects.'
+    ''
+    'A separate interface handles design configuration for first level fMRI time series.'
+    ''
+    'Various data and parameters need to be supplied to specify the design (1) the image files, (2) indicators of the corresponding condition/subject/group (2) any covariates, nuisance variables, or design matrix partitions (3) the type of global normalisation (if any) (4) grand mean scaling options (5) thresholds and masks defining the image volume to analyse. The interface supports a comprehensive range of options for all these parameters.'
+    }';
 factorial_design.prog = @spm_run_factorial_design;
 factorial_design.vout = @vout_stats;
 

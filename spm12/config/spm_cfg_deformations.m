@@ -1,14 +1,14 @@
 function conf = spm_cfg_deformations
 % Configuration file for deformation jobs
 %_______________________________________________________________________
-% Copyright (C) 2008 Wellcome Trust Centre for Neuroimaging
+% Copyright (C) 2008-2016 Wellcome Trust Centre for Neuroimaging
 
 % John Ashburner
-% $Id: spm_cfg_deformations.m 6137 2014-08-19 12:43:11Z john $
+% $Id: spm_cfg_deformations.m 6952 2016-11-25 16:03:13Z guillaume $
 
-hsummary = {[...
-'This is a utility for working with deformation fields. ',...
-'They can be loaded, inverted, combined etc, and the results ',...
+hsummary = {
+'Utility for working with deformation fields.',...
+['They can be loaded, inverted, combined etc, and the results ',...
 'either saved to disk, or applied to some image or surface file. ',...
 'This utility was intended for imaging experts and may therefore ',...
 'be a bit difficult for naive users. ',...
@@ -279,6 +279,16 @@ fwhm.help    = {'Specify the full-width at half maximum (FWHM) of the Gaussian b
 % ---------------------------------------------------------------------
 
 % ---------------------------------------------------------------------
+prefix         = cfg_entry;
+prefix.tag     = 'prefix';
+prefix.name    = 'Filename Prefix';
+prefix.val     = {''};
+prefix.strtype = 's';
+prefix.num     = [0 Inf];
+prefix.help    = {'The name of the output file(s) will be the name of the input file(s) prefixed with this prefix. Leave empty to use SPM default prefixes.'};
+% ---------------------------------------------------------------------
+
+% ---------------------------------------------------------------------
 mask         = cfg_menu;
 mask.tag     = 'mask';
 mask.name    = 'Masking';
@@ -359,7 +369,7 @@ savedet.help  = {'The Jacobian determinants may be saved to disk as a ``j_*.nii'
 pullback      = cfg_branch;
 pullback.name = 'Pullback';
 pullback.tag  = 'pull';
-pullback.val  = {applyto,savedir,interp,mask,fwhm};
+pullback.val  = {applyto,savedir,interp,mask,fwhm,prefix};
 pullback.help = {[...
 'This is the old way of warping images, which involves resampling images based on a mapping from ',...
 'the new (warped) image space back to the original image.  ',...
@@ -381,7 +391,7 @@ fwhm.help     = {[fwhm.help{1} ' Note that you can specify [0 0 0], ',...
 pushfo        = cfg_branch;
 pushfo.name   = 'Pushforward';
 pushfo.tag    = 'push';
-pushfo.val    = {applyto,weight,savedir,deffov,preserve,fwhm};
+pushfo.val    = {applyto,weight,savedir,deffov,preserve,fwhm,prefix};
 pushfo.help   = {[...
 'This is a newer way of warping images (for SPM at least), and involves the ',...
 'forward pushing of voxel values from the original image into the appropriate place in the warped image. ',...
@@ -426,11 +436,9 @@ conf         = exbranch('Deformations','defs',{comp,output});
 conf.prog    = @spm_deformations;
 conf.vout    = @vout;
 conf.help    = hsummary;
-return;
-%_______________________________________________________________________
 
-%_______________________________________________________________________
 
+%==========================================================================
 function vo = vout(job)
 vo = [];
 savedef   = false;
@@ -439,28 +447,28 @@ savesurf  = false;
 savejac   = false;
 for i=1:numel(job.out)
     out = job.out{i};
-    if isfield(out,'savedef') && ~savedef,
+    if isfield(out,'savedef') && ~savedef
         savedef = true;
         if isempty(vo), vo = cfg_dep; else vo(end+1) = cfg_dep; end
         vo(end).sname      = 'Deformation';
         vo(end).src_output = substruct('.','def');
         vo(end).tgt_spec   = cfg_findspec({{'filter','nifti'}});
     end
-    if (isfield(out,'pull') || isfield(out,'push')) && ~saveimage,
+    if (isfield(out,'pull') || isfield(out,'push')) && ~saveimage
         saveimage = true;
         if isempty(vo), vo = cfg_dep; else vo(end+1) = cfg_dep; end
         vo(end).sname      = 'Warped Images';
         vo(end).src_output = substruct('.','warped');
         vo(end).tgt_spec   = cfg_findspec({{'filter','image'}});
     end
-    if isfield(out,'surf') && ~savesurf,
+    if isfield(out,'surf') && ~savesurf
         savesurf = true;
         if isempty(vo), vo = cfg_dep; else vo(end+1) = cfg_dep; end
         vo(end).sname      = 'Warped Surfaces';
         vo(end).src_output = substruct('.','surf');
         vo(end).tgt_spec   = cfg_findspec({{'filter','mesh'}});
     end
-    if isfield(out,'savejac') && ~savejac,
+    if isfield(out,'savejac') && ~savejac
         savejac = true;
         if isempty(vo), vo = cfg_dep; else vo(end+1) = cfg_dep; end
         vo(end).sname      = 'Jacobian';
@@ -468,10 +476,9 @@ for i=1:numel(job.out)
         vo(end).tgt_spec   = cfg_findspec({{'filter','image'}});
     end
 end
-return;
-%_______________________________________________________________________
 
-%_______________________________________________________________________
+
+%==========================================================================
 function entry_item = entry(name, tag, strtype, num)
 entry_item         = cfg_entry;
 entry_item.name    = name;

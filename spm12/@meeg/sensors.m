@@ -7,7 +7,7 @@ function res = sensors(this, type, newsens)
 % Copyright (C) 2008-2012 Wellcome Trust Centre for Neuroimaging
 
 % Vladimir Litvak
-% $Id: sensors.m 6046 2014-06-16 10:58:27Z vladimir $
+% $Id: sensors.m 6829 2016-07-07 10:16:46Z vladimir $
 
 if nargin<2
     error('Sensor type (EEG or MEG) must be specified');
@@ -36,11 +36,22 @@ switch lower(type)
             this.sensors(1).meg = newsens;
             res = check(this);
         end
+    case 'src'
+        if nargin < 3
+            if isfield(this.sensors, 'src')
+                res = this.sensors.src;
+            else
+                res = [];
+            end
+        else
+            this.sensors(1).src = newsens;
+            res = check(this);
+        end
     otherwise
         error('Unsupported sensor type');
 end
 
-if  ~isempty(res) && this.montage.Mind > 0
+if  nargin < 3 && ~isempty(res) && ismember(lower(type), {'eeg', 'meg'}) && this.montage.Mind > 0
     sens = res;
     montage = this.montage.M(this.montage.Mind);
     if  ~isempty(intersect(sens.label, montage.labelorg))
@@ -140,8 +151,8 @@ if  ~isempty(res) && this.montage.Mind > 0
     end
     
     if strcmpi(type, 'MEG')
-        res =  ft_datatype_sens(sens, 'version', 'upcoming', 'amplitude', 'T', 'distance', 'mm');
+        res = ft_datatype_sens(sens, 'amplitude', 'T', 'distance', 'mm');
     else
-        res = ft_datatype_sens(sens, 'version', 'upcoming', 'amplitude', 'V', 'distance', 'mm');
+        res = ft_datatype_sens(sens, 'amplitude', 'V', 'distance', 'mm');
     end
 end

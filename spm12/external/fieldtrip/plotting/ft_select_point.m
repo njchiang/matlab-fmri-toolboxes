@@ -7,18 +7,19 @@ function [selected] = ft_select_point(pos, varargin)
 % Use as
 %   [selected] = ft_select_point(pos, ...)
 %
-%
 % Optional input arguments should come in key-value pairs and can include
 %   'multiple'   = true/false, make multiple selections, pressing "q" on the keyboard finalizes the selection (default = false)
 %   'nearest'    = true/false (default = true)
 %
-% Example use
+% Example
 %   pos = randn(10,2);
 %   figure
 %   plot(pos(:,1), pos(:,2), '.')
 %   ft_select_point(pos)
+%
+% See also FT_SELECT_BOX, FT_SELECT_CHANNEL, FT_SELECT_POINT3D, FT_SELECT_RANGE, FT_SELECT_VOXEL 
 
-% This file is part of FieldTrip, see http://www.ru.nl/neuroimaging/fieldtrip
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
 % for the documentation and details.
 %
 %    FieldTrip is free software: you can redistribute it and/or modify
@@ -34,7 +35,7 @@ function [selected] = ft_select_point(pos, varargin)
 %    You should have received a copy of the GNU General Public License
 %    along with FieldTrip. If not, see <http://www.gnu.org/licenses/>.
 %
-% $Id: ft_select_point.m 9515 2014-05-13 13:30:43Z roboos $
+% $Id$
 
 
 % get optional input arguments

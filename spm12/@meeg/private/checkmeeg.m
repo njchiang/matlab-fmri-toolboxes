@@ -6,7 +6,7 @@ function this = checkmeeg(this)
 % Copyright (C) 2008-2014 Wellcome Trust Centre for Neuroimaging
 
 % Vladimir Litvak
-% $Id: checkmeeg.m 6082 2014-07-02 17:40:56Z guillaume $
+% $Id: checkmeeg.m 6817 2016-06-20 17:10:50Z vladimir $
 
 
 %-Initialise data dimensions
@@ -219,6 +219,11 @@ if Ntrials > 0
     if ~isfield(this.trials, 'bad')
         [this.trials.bad] = deal(0);
     end
+    
+    if ~isfield(this.trials, 'tag')
+        [this.trials.tag] = deal([]);
+    end
+    
     if ~isfield(this.trials, 'events')
         [this.trials.events] = deal([]);
     end
@@ -236,7 +241,7 @@ if Ntrials > 0
         end
         
         if isa(label, 'char')
-            this.trials(i).label = label;
+            this.trials(i).label = deblank(label);
         else
             this.trials(i).label = 'Unknown';
             warning_flexible('SPM:checkmeeg', 'Some trial labels were not strings, changing back to ''Unknown''.');
@@ -355,7 +360,7 @@ else
                     this.sensors.eeg = rmfield(this.sensors.eeg, 'chanunit');
                 end
             end
-            this.sensors.eeg = ft_datatype_sens(this.sensors.eeg, 'version', 'upcoming', 'amplitude', 'V', 'distance', 'mm');        
+            this.sensors.eeg = ft_datatype_sens(this.sensors.eeg, 'amplitude', 'V', 'distance', 'mm');        
         end
     end
     if isfield(this.sensors, 'meg')
@@ -368,7 +373,7 @@ else
                     this.sensors.meg = rmfield(this.sensors.meg, 'chanunit');
                 end
             end
-            this.sensors.meg = ft_datatype_sens(this.sensors.meg, 'version', 'upcoming', 'amplitude', 'T', 'distance', 'mm');
+            this.sensors.meg = ft_datatype_sens(this.sensors.meg, 'amplitude', 'T', 'distance', 'mm');
         end
     end
 end
@@ -378,7 +383,7 @@ end
 if ~isfield(this, 'fiducials')
    this.fiducials = struct([]);
 else
-   this.fiducials  = ft_struct2double(this.fiducials);
+   this.fiducials  = ft_struct2double(fixpnt(this.fiducials));
 end
 
 if ~isfield(this, 'artifacts')

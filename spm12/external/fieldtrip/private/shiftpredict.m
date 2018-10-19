@@ -19,7 +19,7 @@ function [prb, cohobs, mcohrnd] = shiftpredict(cfg, dat, datindx, refindx, trlta
 
 % Copyright (C) 2005, Robert Oostenveld
 %
-% This file is part of FieldTrip, see http://www.ru.nl/neuroimaging/fieldtrip
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
 % for the documentation and details.
 %
 %    FieldTrip is free software: you can redistribute it and/or modify
@@ -35,7 +35,7 @@ function [prb, cohobs, mcohrnd] = shiftpredict(cfg, dat, datindx, refindx, trlta
 %    You should have received a copy of the GNU General Public License
 %    along with FieldTrip. If not, see <http://www.gnu.org/licenses/>.
 %
-% $Id: shiftpredict.m 9663 2014-06-22 07:06:19Z roboos $
+% $Id$
 
 nsgn = size(dat,1);
 ntap = size(dat,2); % total number of tapers over all trials
@@ -83,7 +83,7 @@ switch cfg.method
 case {'abscoh', 'imagcoh', 'absimagcoh', 'atanh', 'atanh_randphase'}
   % normalise, so that the complex conjugate multiplication immediately results in coherence
   if ~all(trltapcnt==trltapcnt(1))
-    error('all trials should have the same number of tapers');
+    ft_error('all trials should have the same number of tapers');
   end
   for i=1:nsgn
     for k=1:nfrq
@@ -109,7 +109,7 @@ case {'amplcorr', 'absamplcorr'}
   dat = dat./sqrt(ntrl);
 
 otherwise
-  error('unknown method for shift-predictor')
+  ft_error('unknown method for shift-predictor')
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -219,7 +219,7 @@ case 3
     case 'absamplcorr'
       coh(:,:,i) = abs(     datref(:,:,i) * dat(:,:,i)');
     otherwise
-      error('unsupported method');
+      ft_error('unsupported method');
     end
   end
 
@@ -241,12 +241,12 @@ case 1
     case 'absamplcorr'
       coh(i,k,:) = abs(     sum(datref(i,:,:) .* conj(dat(k,:,:)), 2));
     otherwise
-      error('unsupported method');
+      ft_error('unsupported method');
     end
   end
   end
 otherwise
-  error('unsupported loopdim');
+  ft_error('unsupported loopdim');
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

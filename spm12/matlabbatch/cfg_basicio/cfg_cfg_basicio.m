@@ -4,7 +4,7 @@ function cfg_basicio = cfg_cfg_basicio
 % by MATLABBATCH using ConfGUI. It describes menu structure, validity
 % constraints and links to run time code.
 % Changes to this file will be overwritten if the ConfGUI batch is executed again.
-% Created at 2013-10-02 13:55:50.
+% Created at 2015-12-01 13:53:35.
 % ---------------------------------------------------------------------
 % files Files
 % ---------------------------------------------------------------------
@@ -74,6 +74,61 @@ cfg_mkdir.help    = {'Create a new directory.'};
 cfg_mkdir.prog = @cfg_run_mkdir;
 cfg_mkdir.vout = @cfg_vout_mkdir;
 % ---------------------------------------------------------------------
+% dir Directory to move/copy/delete
+% ---------------------------------------------------------------------
+dir         = cfg_files;
+dir.tag     = 'dir';
+dir.name    = 'Directory to move/copy/delete';
+dir.help    = {'This directory will be moved, copied or deleted.'};
+dir.filter  = {'dir'};
+dir.ufilter = '.*';
+dir.num     = [1 1];
+% ---------------------------------------------------------------------
+% moveto Move to
+% ---------------------------------------------------------------------
+moveto         = cfg_files;
+moveto.tag     = 'moveto';
+moveto.name    = 'Move to';
+moveto.help    = {'Directory will be moved to the specified directory.'};
+moveto.filter = {'dir'};
+moveto.ufilter = '.*';
+moveto.num     = [1 1];
+% ---------------------------------------------------------------------
+% copyto Copy to
+% ---------------------------------------------------------------------
+copyto         = cfg_files;
+copyto.tag     = 'copyto';
+copyto.name    = 'Copy to';
+copyto.help    = {'Directory will be copied to the specified directory.'};
+copyto.filter = {'dir'};
+copyto.ufilter = '.*';
+copyto.num     = [1 1];
+% ---------------------------------------------------------------------
+% delete Delete
+% ---------------------------------------------------------------------
+delete         = cfg_const;
+delete.tag     = 'delete';
+delete.name    = 'Delete';
+delete.val = {true};
+delete.help    = {'Directory will be deleted.'};
+% ---------------------------------------------------------------------
+% action Action
+% ---------------------------------------------------------------------
+action         = cfg_choice;
+action.tag     = 'action';
+action.name    = 'Action';
+action.values  = {moveto copyto delete};
+% ---------------------------------------------------------------------
+% dir_move Copy/Move/Delete a Directory
+% ---------------------------------------------------------------------
+dir_move      = cfg_exbranch;
+dir_move.tag  = 'dir_move';
+dir_move.name = 'Copy/Move/Delete Directory';
+dir_move.val  = {dir action };
+dir_move.help = {'Copy, move or delete a directory.'};
+dir_move.prog = @cfg_run_dir_move;
+dir_move.vout = @cfg_vout_dir_move;
+% ---------------------------------------------------------------------
 % name Input Name
 % ---------------------------------------------------------------------
 name         = cfg_entry;
@@ -118,7 +173,7 @@ dir_ops         = cfg_choice;
 dir_ops.tag     = 'dir_ops';
 dir_ops.name    = 'Dir Operations';
 dir_ops.help    = {''};
-dir_ops.values  = {cfg_cd cfg_mkdir cfg_named_dir };
+dir_ops.values  = {cfg_cd cfg_mkdir dir_move cfg_named_dir };
 % ---------------------------------------------------------------------
 % files Files to move/copy/delete
 % ---------------------------------------------------------------------
@@ -325,14 +380,38 @@ files.filter = {'any'};
 files.ufilter = '.*';
 files.num     = [0 Inf];
 % ---------------------------------------------------------------------
-% cfg_gzip_files GZip Files
+% outdir Output directory
+% ---------------------------------------------------------------------
+outdir         = cfg_files;
+outdir.tag     = 'outdir';
+outdir.name    = 'Output directory';
+outdir.help    = {'Output files will be placed in this folder. Leave empty to put them into the same folder as the original files.'};
+outdir.filter = {'dir'};
+outdir.ufilter = '.*';
+outdir.num     = [0 1];
+% ---------------------------------------------------------------------
+% keep Keep original files
+% ---------------------------------------------------------------------
+keep         = cfg_menu;
+keep.tag     = 'keep';
+keep.name    = 'Keep original files';
+keep.labels = {
+               'Yes'
+               'No'
+               }';
+keep.values = {
+               true
+               false
+               }';
+% ---------------------------------------------------------------------
+% cfg_gzip_files Gzip Files
 % ---------------------------------------------------------------------
 cfg_gzip_files         = cfg_exbranch;
 cfg_gzip_files.tag     = 'cfg_gzip_files';
-cfg_gzip_files.name    = 'GZip Files';
-cfg_gzip_files.val     = {files };
-cfg_gzip_files.help    = {'GZip each file in a set of files.'};
-cfg_gzip_files.prog = @(job)gzip(job.files);
+cfg_gzip_files.name    = 'Gzip Files';
+cfg_gzip_files.val     = {files outdir keep };
+cfg_gzip_files.help    = {'Gzip each file in a set of files.'};
+cfg_gzip_files.prog = @cfg_run_gzip_files;
 cfg_gzip_files.vout = @cfg_vout_gzip_files;
 % ---------------------------------------------------------------------
 % files File Set
@@ -345,14 +424,38 @@ files.filter = {'\.gz$'};
 files.ufilter = '.*';
 files.num     = [0 Inf];
 % ---------------------------------------------------------------------
-% cfg_gunzip_files GunZip Files
+% outdir Output directory
+% ---------------------------------------------------------------------
+outdir         = cfg_files;
+outdir.tag     = 'outdir';
+outdir.name    = 'Output directory';
+outdir.help    = {'Output files will be placed in this folder. Leave empty to put them into the same folder as the original files.'};
+outdir.filter = {'dir'};
+outdir.ufilter = '.*';
+outdir.num     = [0 1];
+% ---------------------------------------------------------------------
+% keep Keep original files
+% ---------------------------------------------------------------------
+keep         = cfg_menu;
+keep.tag     = 'keep';
+keep.name    = 'Keep original files';
+keep.labels = {
+               'Yes'
+               'No'
+               }';
+keep.values = {
+               true
+               false
+               }';
+% ---------------------------------------------------------------------
+% cfg_gunzip_files Gunzip Files
 % ---------------------------------------------------------------------
 cfg_gunzip_files         = cfg_exbranch;
 cfg_gunzip_files.tag     = 'cfg_gunzip_files';
-cfg_gunzip_files.name    = 'GunZip Files';
-cfg_gunzip_files.val     = {files };
-cfg_gunzip_files.help    = {'GunZip each file in a set of files.'};
-cfg_gunzip_files.prog = @(job)gunzip(job.files);
+cfg_gunzip_files.name    = 'Gunzip Files';
+cfg_gunzip_files.val     = {files outdir keep };
+cfg_gunzip_files.help    = {'Gunzip each file in a set of files.'};
+cfg_gunzip_files.prog = @cfg_run_gunzip_files;
 cfg_gunzip_files.vout = @cfg_vout_gunzip_files;
 % ---------------------------------------------------------------------
 % name Input Name

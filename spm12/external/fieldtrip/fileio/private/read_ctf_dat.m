@@ -1,4 +1,4 @@
-function [meg] = read_ctf_dat(filename);
+function [meg] = read_ctf_dat(filename)
 
 % READ_CTF_DAT reads MEG data from an ascii format CTF file
 %
@@ -12,7 +12,7 @@ function [meg] = read_ctf_dat(filename);
 
 % Copyright (C) 2002, Robert Oostenveld
 % 
-% This file is part of FieldTrip, see http://www.ru.nl/neuroimaging/fieldtrip
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
 % for the documentation and details.
 %
 %    FieldTrip is free software: you can redistribute it and/or modify
@@ -28,11 +28,11 @@ function [meg] = read_ctf_dat(filename);
 %    You should have received a copy of the GNU General Public License
 %    along with FieldTrip. If not, see <http://www.gnu.org/licenses/>.
 %
-% $Id: read_ctf_dat.m 7123 2012-12-06 21:21:38Z roboos $
+% $Id$
 
 fid = fopen(filename, 'r');
 if fid==-1
-  error(sprintf('could not open file %s', filename));
+  ft_error(sprintf('could not open file %s', filename));
 end
 
 % read the sample number
@@ -56,7 +56,7 @@ meg.label = {};
 chan = 0;
 while (1)
   line = fgetl(fid);
-  if ~isempty(line) & line==-1
+  if ~isempty(line) && line==-1
     % reached end of file
     break
   end

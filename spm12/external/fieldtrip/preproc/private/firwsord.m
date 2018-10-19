@@ -50,7 +50,7 @@
 % along with this program; if not, write to the Free Software
 % Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 %
-% $Id: firwsord.m 9825 2014-09-22 15:19:53Z roboos $
+% $Id$
 
 function [ m, dev ] = firwsord(wintype, fs, df, dev)
 
@@ -60,20 +60,20 @@ winDevArray = [0.089 0.056 0.0063 0.0022 0.0002];
 
 % Check arguments
 if nargin < 3 || isempty(fs) || isempty(df) || isempty(wintype)
-    error('Not enough input arguments.')
+    ft_error('Not enough input arguments.')
 end
 
 % Window type
 wintype = find(strcmp(wintype, winTypeArray));
 if isempty(wintype)
-    error('Unknown window type.')
+    ft_error('Unknown window type.')
 end
 
 df = df / fs; % Normalize transition band width
 
 if wintype == 6 % Kaiser window
     if nargin < 4 || isempty(dev)
-        error('Not enough input arguments.')
+        ft_error('Not enough input arguments.')
     end
     devdb = -20 * log10(dev);
     m = 1 + (devdb - 8) / (2.285 * 2 * pi * df);

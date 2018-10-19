@@ -1,34 +1,34 @@
 function Do = spm_eeg_grandmean(S)
-% average over multiple data sets
+% Average over multiple M/EEG data sets
 % FORMAT Do = spm_eeg_grandmean(S)
 %
 % S         - struct (optional)
 %  fields of S:
-%   D         - filenames (char matrix) of EEG mat-file containing epoched
-%               data
+%   D         - filenames (char matrix) of M/EEG MAT-files containing
+%               epoched data
 %   weighted  - average weighted by number of replications in inputs (1)
-%               or not (0).
-%   outfile   - name of the output file (default - 'grand_mean')
+%               or not (0) [default: 0]
+%   outfile   - name of the output file [default: 'grand_mean']
 %
 % Output:
 % Do        - EEG data struct, result files are saved in the same
-%                 directory as first input file.
+%             directory as first input file.
 %__________________________________________________________________________
 %
 % spm_eeg_grandmean averages data over multiple files. The data must have
 % the same trialtype numbering and sampling rate. This function can be used
-% for grand mean averaging, i.e. computing the average over multiple subjects.
-% Missing event types and bad channels are taken into account properly.
-% The output is written to a user-specified new file. The default name is
-% the same name as the first selected input file, but prefixed with a 'g'.
-% The output file is written to the current working directory.
+% for grand mean averaging, i.e. computing the average over multiple
+% subjects. Missing event types and bad channels are taken into account
+% properly. The output is written to a user-specified new file. The default
+% name is the same name as the first selected input file, but prefixed with
+% a 'g'. The output file is written to the current working directory.
 %__________________________________________________________________________
-% Copyright (C) 2008-2012 Wellcome Trust Centre for Neuroimaging
+% Copyright (C) 2008-2017 Wellcome Trust Centre for Neuroimaging
 
 % Stefan Kiebel
-% $Id: spm_eeg_grandmean.m 5704 2013-10-18 12:04:17Z vladimir $
+% $Id: spm_eeg_grandmean.m 7139 2017-07-24 10:54:11Z guillaume $
 
-SVNrev = '$Rev: 5704 $';
+SVNrev = '$Rev: 7139 $';
 
 %-Startup
 %--------------------------------------------------------------------------
@@ -51,7 +51,7 @@ if ischar(D)
         end
         D = F;
     catch
-        error('Trouble reading files');
+        error('Trouble reading files.');
     end
 end
 
@@ -59,11 +59,11 @@ Nfiles = length(D);
 
 %-Check dimension of the data files
 %--------------------------------------------------------------------------
-estr = [];
+estr = '';
 
 for i = 1:Nfiles
     flist = [];
-    if ~strcmp(D{i}.type, 'evoked');
+    if ~strcmp(D{i}.type, 'evoked')
         flist = [flist ' ' D{i}.fname];
     end
     if ~isempty(flist)
@@ -195,7 +195,6 @@ end
 % send message error (if any)
 if ~isempty(estr)
     error(estr)
-    return
 else
     fprintf('Ok: All data files have the same dimensions.\n')
 end
@@ -214,6 +213,7 @@ end
 
 % The order of the conditions will be consistent with the first file
 [sel1, sel2] = spm_match_str(D{1}.condlist, types);
+sel2  = sel2(:)';
 types = types([sel2, setdiff(1:length(types), sel2)]);
 
 Ntypes = numel(types);
@@ -243,6 +243,8 @@ end
 % for determining bad channels of the grandmean
 w = zeros(Do.nchannels, Ntypes);
 
+badchans  = cellfun(@badchannels, D, 'UniformOutput', 0); 
+trialinds = cellfun(@(x) x.indtrial(types, 'GOOD'), D, 'UniformOutput', 0); 
 
 %-Do the averaging
 %--------------------------------------------------------------------------
@@ -257,8 +259,8 @@ if strncmp(D{1}.transformtype, 'TF',2)
         for j = 1:D{1}.nchannels
 
             for k = 1:Nfiles
-                if ~ismember(j, D{k}.badchannels)
-                    ind = D{k}.indtrial(types{i}, 'GOOD');
+                 if ~any(badchans{k}==j) 
+                    ind = trialinds{k}(i);
                     if ~isempty(ind)
                         d(j, :, :) = d(j, :, :) + nrepl(k, i)*D{k}(j, :, :, ind);
                         w(j, i) = w(j, i) + nrepl(k, i);
@@ -274,21 +276,22 @@ if strncmp(D{1}.transformtype, 'TF',2)
 
         Do(1:Do.nchannels, 1:Do.nfrequencies, 1:Do.nsamples, i) = d;
 
-        if ismember(i, Ibar), spm_progress_bar('Set', i); end
+        if any(Ibar==i), spm_progress_bar('Set', i); end
 
     end
 
 else
     for i = 1:Ntypes
+        
         d = zeros(D{1}.nchannels, D{1}.nsamples);
 
         for j = 1:D{1}.nchannels
 
             for k = 1:Nfiles
-                if ~ismember(j, D{k}.badchannels)
-                    ind = D{k}.indtrial(types{i}, 'GOOD');
+                if ~any(badchans{k}==j) 
+                    ind = trialinds{k}(i);
                     if ~isempty(ind)
-                        d(j, :) = d(j, :) + nrepl(k, i)*D{k}(j, :, ind);
+                        d(j, :) = d(j, :) + nrepl(k, i)*D{k}(j, :, ind); 
                         w(j, i) = w(j, i) + nrepl(k, i);
                     end
                 end
@@ -302,7 +305,7 @@ else
 
         Do(1:Do.nchannels, 1:Do.nsamples, i) = d;
 
-        if ismember(i, Ibar), spm_progress_bar('Set', i); end
+        if any(Ibar==i), spm_progress_bar('Set', i); end
 
     end
 end
@@ -311,25 +314,27 @@ spm_progress_bar('Clear');
 
 %-Average sensor locations
 %--------------------------------------------------------------------------
+nograph = spm('CmdLine');
+h       = [];
 Ntrials = sum(nrepl, 2);
 if ~isempty(megsens)
-    spm_figure('GetWin','Graphics');clf;
+    if ~nograph, spm_figure('GetWin','Graphics');clf; end
     if ~isempty(eegsens)
-        h = subplot(2, 1, 1);
+        if ~nograph, h = subplot(2, 1, 1); end
         aeegsens = ft_average_sens(eegsens, 'weights', Ntrials, 'feedback', h);
         Do = sensors(Do, 'EEG', aeegsens);
-        
-        h = subplot(2, 1, 2);
+        if ~nograph, h = subplot(2, 1, 2); end
     else
-        h = axes;
+        if ~nograph, h = axes; end
     end
-    
     [amegsens,afid] = ft_average_sens(megsens, 'fiducials', fid, 'weights', Ntrials, 'feedback', h);
     Do = sensors(Do, 'MEG', amegsens);
     Do = fiducials(Do, afid);
 elseif ~isempty(eegsens)
-    spm_figure('GetWin','Graphics');clf;
-    h = axes;
+    if ~nograph
+        spm_figure('GetWin','Graphics');clf;
+        h = axes;
+    end
     [aeegsens,afid] = ft_average_sens(eegsens, 'fiducials', fid, 'weights', Ntrials, 'feedback', h);
     Do = sensors(Do, 'EEG', aeegsens);
     Do = fiducials(Do, afid);
@@ -339,19 +344,14 @@ end
 %--------------------------------------------------------------------------
 Do = type(Do, 'evoked');
 
-bads = find(~any(w'));
-if ~isempty(bads)
-    Do = badchannels(Do, bads, 1);
-else
-    Do = badchannels(Do, 1:Do.nchannels, 0);
-end
-
 nrepl = sum(nrepl, 1);
 
+Do = badchannels(Do, ':', ~any(w, 2));
 Do = conditions(Do, ':', types);
 Do = repl(Do, ':', nrepl);
 Do = badtrials(Do, ':', 0);
 Do = trialonset(Do, ':', []);
+Do = trialtag(Do, ':', []);
 Do = Do.history('spm_eeg_grandmean', S, 'reset');
 
 save(Do);

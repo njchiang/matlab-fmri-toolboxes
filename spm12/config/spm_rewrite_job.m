@@ -1,9 +1,9 @@
 function job = spm_rewrite_job(job)
 % Rewrite a batch job for SPM12
 %__________________________________________________________________________
-% Copyright (C) 2012-2014 Wellcome Trust Centre for Neuroimaging
+% Copyright (C) 2012-2017 Wellcome Trust Centre for Neuroimaging
 
-% $Id: spm_rewrite_job.m 6209 2014-09-28 18:16:37Z guillaume $
+% $Id: spm_rewrite_job.m 7063 2017-04-19 10:49:44Z guillaume $
 
 
 try
@@ -80,9 +80,28 @@ try
 end
 
 try
-    if isequal(job.stats.results.print, true)
+    if isequal(job.stats.results.print, false) || isequal(job.stats.results.print, 'no')
+        job.stats.results.export = {};
+        job.stats.results = rmfield(job.stats.results,'print');
+    end
+    if isequal(job.stats.results.print, true) || isequal(job.stats.results.print, 'yes')
         job.stats.results.print = spm_get_defaults('ui.print');
     end
+    try, N = numel(job.stats.results.export)+1; catch, N = 1; end
+    if strcmp(job.stats.results.print,'nidm')
+        job.stats.results.export{N}.nidm = struct;
+    else
+        job.stats.results.export{N}.(job.stats.results.print) = true;
+    end
+    job.stats.results = rmfield(job.stats.results,'print');
+end
+try
+    fn = char(fieldnames(job.stats.results.write));
+    if ismember(fn,{'tspm','binary','nary'})
+        try, N = numel(job.stats.results.export)+1; catch, N = 1; end
+        job.stats.results.export{N}.(fn) = job.stats.results.write.(fn);
+    end
+    job.stats.results = rmfield(job.stats.results,'write');
 end
 
 try
@@ -93,6 +112,39 @@ try
         else
             job.stats.results.conspec(i).mask = struct('contrast',job.stats.results.conspec(i).mask);
         end
+    end
+end
+
+try
+    D = job.dcm.fmri;
+    job.dcm.spec.fmri = D;    
+    job.dcm = rmfield(job.dcm,'fmri');
+end
+
+try
+    D = job.dcm.meeg;
+    job.dcm.spec.meeg = D;
+    job.dcm = rmfield(job.dcm,'meeg');
+end
+
+try
+    D = job.dcm.spec.fmri.estimate.dcmmat;
+    for i=1:numel(D)
+        job.dcm.estimate.dcms.subj(i).dcmmat = cellstr(D(i));
+    end
+    job.dcm.estimate.output.separate = struct([]);
+    job.dcm.estimate.est_type = 3;  
+    if isfield(job.dcm.spec.fmri,'estimate') && isfield(job.dcm.spec.fmri.estimate,'analysis')
+        job.dcm.estimate.fmri.analysis = job.dcm.fmri.estimate.analysis;
+    end
+    
+    % Prune
+    job.dcm.spec.fmri = rmfield(job.dcm.spec.fmri,'estimate');
+    if isempty(fieldnames(job.dcm.spec.fmri))
+        job.dcm.spec = rmfield(job.dcm.spec,'fmri');
+    end
+    if isempty(fieldnames(job.dcm.spec))
+        job.dcm = rmfield(job.dcm,'spec');
     end
 end
 
@@ -126,6 +178,36 @@ end
 try
     job.util.ecat;
     job.util = struct('import', job.util);
+end
+
+try
+    job.tools.fieldmap;
+    opts = {'presubphasemag','realimag','phasemag','precalcfieldmap'};
+    imgs{1} = {'phase','magnitude'};
+    imgs{2} = {'shortreal','shortimag','longreal','longimag'};
+    imgs{3} = {'shortphase','shortmag','longphase','longmag'};
+    imgs{4} = {'precalcfieldmap','magfieldmap'};
+    for j=1:numel(opts)
+        try
+            job.tools.fieldmap.(opts{j});
+            job.tools.fieldmap = struct('calculatevdm',job.tools.fieldmap.(opts{j}));
+            for i=1:numel(job.tools.fieldmap.calculatevdm.subj)
+                for k=1:numel(imgs{j})
+                    job.tools.fieldmap.calculatevdm.subj(i).data.(opts{j}).(imgs{j}{k}) = job.tools.fieldmap.calculatevdm.subj(i).(imgs{j}{k});
+                end
+            end
+            job.tools.fieldmap.calculatevdm.subj = rmfield(job.tools.fieldmap.calculatevdm.subj,imgs{j});
+        end
+    end
+end
+
+try
+    if numel(job.tools.longit) > 1
+        ws = warning('off','backtrace');
+        warning('Only converting first item of the "Longitudinal Registration" module.');
+        warning(ws);
+    end
+    job.tools.longit = job.tools.longit{1};
 end
 
 try

@@ -34,7 +34,7 @@ function [f,dfdx,D,dfdu] = spm_fx_fmri(x,u,P,M)
 % Copyright (C) 2002-2014 Wellcome Trust Centre for Neuroimaging
 
 % Karl Friston & Klaas Enno Stephan
-% $Id: spm_fx_fmri.m 6198 2014-09-25 10:38:48Z karl $
+% $Id: spm_fx_fmri.m 6855 2016-08-06 10:06:35Z karl $
 
 % options
 %--------------------------------------------------------------------------
@@ -54,7 +54,7 @@ P.D   = full(P.D);                       % nonlinear parameters
 %--------------------------------------------------------------------------
 f    = x;
 
-% if there are five hidden states per region only one is neuronal
+% if there are five hidden states per region, only one is neuronal
 %==========================================================================
 if size(x,2) == 5
     
@@ -116,9 +116,10 @@ if size(x,2) == 5
     f(:,1) = EE*x(:,1) + P.C*u(:);
     
     
-else  % otherwise two neuronal states per region
-    %======================================================================
+else
     
+    % otherwise two neuronal states per region
+    %======================================================================
     
     % input dependent modulation
     %----------------------------------------------------------------------

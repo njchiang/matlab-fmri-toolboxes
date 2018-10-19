@@ -3,20 +3,38 @@ function [x,f,h] = spm_dcm_x_neural(P,model)
 % FORMAT [x,f,h] = spm_dcm_x_neural(P,'model')
 %
 %  P      - parameter structure
-% 'model'   - 'ERP','SEP','CMC','LFP','CMM','NNM', 'MFM' or 'CMM NMDA'
+% 'model' - 'ERP','SEP','CMC','LFP','CMM','NNM', 'MFM' or 'CMM NMDA'
 %
 % x   - initial states
-% f   - state euquation dxdt = f(x,u,P,M)  - synaptic activity
-% h   - state euquation dPdt = f(x,u,P,M)  - synaptic plasticity
+% f   - state equation dxdt = f(x,u,P,M)  - synaptic activity
+% h   - state equation dPdt = f(x,u,P,M)  - synaptic plasticity
 %__________________________________________________________________________
 % Copyright (C) 2008 Wellcome Trust Centre for Neuroimaging
 
 % Karl Friston
-% $Id: spm_dcm_x_neural.m 6113 2014-07-21 09:41:03Z karl $
+% $Id: spm_dcm_x_neural.m 6971 2016-12-14 18:49:19Z bernadette $
 
 % paramteric state equation
 %--------------------------------------------------------------------------
 h  = [];
+
+% assemble initial states for generic models
+%==========================================================================
+if isstruct(model)
+    
+    P.A{1} = 1;
+    for i = 1:numel(model)
+        x{i} = spm_dcm_x_neural(P,model(i).source);
+    end
+    
+    % general (multi-model) equations of motion
+    %----------------------------------------------------------------------
+    f  = 'spm_fx_gen'; 
+    return
+    
+end
+
+
 
 % initial state and equation
 %--------------------------------------------------------------------------
@@ -142,7 +160,32 @@ switch lower(model)
         x  = spm_x_mfm(P);
         f  = 'spm_fx_mfm';
         
-            % Mean field model (nonlinear in states) - with covariance
+    
+    % Basal ganglia circuit (linear in states) - with covariance
+    %======================================================================
+    case{'bgc'}
+        
+        % inital states and model
+        %------------------------------------------------------------------
+        n = length(1);
+        m = 10;
+        x = sparse(n,m);
+        
+        f = 'spm_fx_bgc';        
+        
+    % Linear in states – motor microcircuit
+    %======================================================================
+    case{'mmc'}
+        
+        % inital states
+        %------------------------------------------------------------------
+        n  = length(P.A{1});                          % number of sources
+        m  = 8;                                       % number of states
+        x  = sparse(n,m);
+        
+        f  = 'spm_fx_mmc';
+        
+    % Null model - of Jacabian (linear in states)
     %======================================================================
     case{'null'}
         

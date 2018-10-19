@@ -50,10 +50,10 @@ function varargout=spm(varargin)
 % FORMAT & help in the main body of spm.m
 %
 %_______________________________________________________________________
-% Copyright (C) 1991,1994-2014 Wellcome Trust Centre for Neuroimaging
+% Copyright (C) 1991,1994-2016 Wellcome Trust Centre for Neuroimaging
 
 % Andrew Holmes
-% $Id: spm.m 6196 2014-09-24 18:02:17Z guillaume $
+% $Id: spm.m 7134 2017-07-18 09:46:25Z guillaume $
 
 
 %=======================================================================
@@ -414,26 +414,35 @@ Modality = spm('CheckModality',Modality);
 clear global defaults
 spm_get_defaults('modality',Modality);
 
-%-Addpath modality-specific toolboxes
+%-Addpath (modality-specific) toolboxes
 %-----------------------------------------------------------------------
-if strcmpi(Modality,'EEG') && ~isdeployed
-    addpath(fullfile(spm('Dir'),'external','fieldtrip'));
+if ~isdeployed
+    addpath(fullfile(spm('Dir'),'toolbox','DEM'));
+end
+
+if strcmpi(Modality,'EEG')
+    if ~isdeployed
+        addpath(fullfile(spm('Dir'),'external','fieldtrip'));
+    end
     clear ft_defaults
     clear global ft_default
     ft_defaults;
     global ft_default
     ft_default.trackcallinfo = 'no';
     ft_default.showcallinfo = 'no';
-    addpath(...
-        fullfile(spm('Dir'),'external','bemcp'),...
-        fullfile(spm('Dir'),'external','ctf'),...
-        fullfile(spm('Dir'),'external','eeprobe'),...
-        fullfile(spm('Dir'),'external','mne'),...
-        fullfile(spm('Dir'),'external','yokogawa_meg_reader'),...
-        fullfile(spm('Dir'),'toolbox', 'dcm_meeg'),...
-        fullfile(spm('Dir'),'toolbox', 'spectral'),...
-        fullfile(spm('Dir'),'toolbox', 'Neural_Models'),...
-        fullfile(spm('Dir'),'toolbox', 'MEEGtools'));
+    ft_warning('off','backtrace');
+    if ~isdeployed
+        addpath(...
+            fullfile(spm('Dir'),'external','bemcp'),...
+            fullfile(spm('Dir'),'external','ctf'),...
+            fullfile(spm('Dir'),'external','eeprobe'),...
+            fullfile(spm('Dir'),'external','mne'),...
+            fullfile(spm('Dir'),'external','yokogawa_meg_reader'),...
+            fullfile(spm('Dir'),'toolbox', 'dcm_meeg'),...
+            fullfile(spm('Dir'),'toolbox', 'spectral'),...
+            fullfile(spm('Dir'),'toolbox', 'Neural_Models'),...
+            fullfile(spm('Dir'),'toolbox', 'MEEGtools'));
+    end
 end
 
 %-Turn output pagination off in Octave
@@ -516,7 +525,8 @@ set(findobj(Fmenu,'Tag', 'Utils'), 'String',{'Utils...',...
     'Load MAT-file',...
     'Save MAT-file',...
     'Delete files',...
-    'Show SPM'});
+    'Show SPM',...
+    'Show MATLAB'});
 set(findobj(Fmenu,'Tag', 'Utils'), 'UserData',{...
     ['spm(''FnBanner'',''CD'');' ...
      'cd(spm_select(1,''dir'',''Select new working directory''));' ...
@@ -533,7 +543,9 @@ set(findobj(Fmenu,'Tag', 'Utils'), 'UserData',{...
     ['spm(''FnBanner'',''Delete files'');' ...
      'spm(''Delete'');'],...
     ['spm(''FnBanner'',''Show SPM'');' ...
-     'spm(''Show'');']});
+     'spm(''Show'');'],...
+    ['spm(''FnBanner'',''Show Command Window'');' ...
+     'commandwindow;']});
 
 %-Set Toolboxes
 %-----------------------------------------------------------------------
@@ -583,6 +595,9 @@ Finter = figure('IntegerHandle','off',...
     'DefaultUicontrolInterruptible','on',...
     'Renderer','painters',...
     'Visible',Vis);
+if spm_check_version('matlab','8.3') < 0
+    set(Finter,'DoubleBuffer','on');
+end
 varargout = {Finter};
 
 %=======================================================================
@@ -705,7 +720,7 @@ elseif Win(1)=='0'
     end
     if size(Rect,1) > 1 % Multiple Monitors
         %-The MonitorPositions property depends on the architecture
-        if ~ispc
+        if ~ispc || spm_check_version('matlab','8.4') >= 0
             Rect(:,[3 4]) = Rect(:,[3 4]) + Rect(:,[1 2]);
         end
         monitor = spm_get_defaults('ui.monitor');
@@ -1029,12 +1044,10 @@ if isempty(CmdLine)
     try
         CmdLine = spm_get_defaults('cmdline');
     catch
-        CmdLine = 0;
+        CmdLine = false;
     end
 end
-varargout = { CmdLine | ...
-              (get(0,'ScreenDepth')==0) | ...
-              strcmpi(spm_check_version,'octave') };
+varargout = { CmdLine | (get(0,'ScreenDepth')==0) };
 
 
 %=======================================================================
@@ -1154,9 +1167,7 @@ if ~CmdLine
     str = sprintf('%s  %s  %s',SPMver,repmat(' ',1,tmp-4),timestr);
     h   = msgbox([{''};Message(:);{''};{''};{str}],...
           sprintf('%s: %s',spm('Version'),Title),...
-          icon,'non-modal');
-    drawnow
-    set(h,'windowstyle','modal');
+          icon,'modal');
 end
 
 if wait
@@ -1184,17 +1195,20 @@ else
 end
 mscript = cellstr(mscript);
 for i=1:numel(mscript)
+    mscript{i} = spm_file(mscript{i},'local',pwd);
     if isdeployed
         [p,n,e] = fileparts(mscript{i});
         if isempty(p), p = pwd;  end
         if isempty(e), e = '.m'; end
         mscript{i} = fullfile(p,[n e]);
-        fid = fopen(mscript{i});
-        if fid == -1, error('Cannot open %s',mscript{i}); end
-        S = fscanf(fid,'%c');
-        fclose(fid);
+        S = fileread(mscript{i});
         try
-            evalin('base',S);
+            assignin('base','mfilename',@(varargin) mscript{i});
+            if strncmp(S,'V1MCC',5)
+                evalin('base',n); % mcc compiled script
+            else
+                evalin('base',S);
+            end
         catch
             fprintf('Execution failed: %s\n',mscript{i});
             rethrow(lasterror);

@@ -1,5 +1,4 @@
 function FEP_Manifold
-% FORMAT FEP_Manifold
 % This demonstration routine simulates the emergence of life - as defined
 % in terms of active inference - using a synthetic primordial soup. The key
 % aspect of this dynamics is that there is a separation between dynamical
@@ -31,7 +30,7 @@ function FEP_Manifold
 % Copyright (C) 2008 Wellcome Trust Centre for Neuroimaging
  
 % Karl Friston
-% $Id: FEP_Manifold.m 5709 2013-10-22 11:07:29Z guillaume $
+% $Id: FEP_Manifold.m 7163 2017-09-04 09:12:50Z karl $
  
  
 % default settings (GRAPHICS sets movies)
@@ -90,7 +89,7 @@ L     = sparse(double(any(A(:,:,t),3)));
  
 % internal states (defined by principle eigenvector of Markov blanket)
 %--------------------------------------------------------------------------
-B     = double((L + L' + L*L'));
+B     = double((L + L' + L'*L));
 B     = B - diag(diag(B));
 v     = spm_svd(B*B',1);
 [v,j] = sort(abs(v(:,1)),'descend');

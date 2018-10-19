@@ -79,10 +79,10 @@ function [CVA] = spm_cva_ui(action,varargin)
 % Vieth J, Keber H, Hunter K, Frackowiak RS. NeuroImage. 1996 Jun;
 % 3(3):167-174.
 %__________________________________________________________________________
-% Copyright (C) 2008-2011 Wellcome Trust Centre for Neuroimaging
+% Copyright (C) 2008-2014 Wellcome Trust Centre for Neuroimaging
 
 % Karl Friston
-% $Id: spm_cva_ui.m 5771 2013-11-30 16:55:24Z karl $
+% $Id: spm_cva_ui.m 7081 2017-05-27 19:36:09Z karl $
 
 
 %-Get figure handles
@@ -174,7 +174,7 @@ switch lower(action)
         %-Null-space
         %------------------------------------------------------------------
         X0  = [];
-        try, X0 = [X0 SPM.xX.K.X0]; end                   %-drift terms
+        try, X0 = [X0 blkdiag(SPM.xX.K.X0)]; end          %-drift terms
         try, X0 = [X0 spm_detrend(SPM.xGX.gSF)]; end      %-global estimate
         
         
@@ -234,7 +234,7 @@ switch lower(action)
         
         %-Show results
         %------------------------------------------------------------------
-        spm_figure('GetWin','MVB');
+        spm_figure('GetWin','CVA');
         
         %-Unpack
         %------------------------------------------------------------------

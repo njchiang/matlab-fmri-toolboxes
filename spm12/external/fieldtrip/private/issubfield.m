@@ -1,4 +1,4 @@
-function [r] = issubfield(s, f)
+function r = issubfield(s, f)
 
 % ISSUBFIELD tests for the presence of a field in a structure just like the standard
 % Matlab ISFIELD function, except that you can also specify nested fields
@@ -16,7 +16,7 @@ function [r] = issubfield(s, f)
 
 % Copyright (C) 2005-2013, Robert Oostenveld
 %
-% This file is part of FieldTrip, see http://www.ru.nl/neuroimaging/fieldtrip
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
 % for the documentation and details.
 %
 %    FieldTrip is free software: you can redistribute it and/or modify
@@ -32,11 +32,27 @@ function [r] = issubfield(s, f)
 %    You should have received a copy of the GNU General Public License
 %    along with FieldTrip. If not, see <http://www.gnu.org/licenses/>.
 %
-% $Id: issubfield.m 9254 2014-03-04 08:56:37Z jorhor $
+% $Id$
 
-try
-  getsubfield(s, f);    % if this works, then the subfield must be present  
+%try
+%  getsubfield(s, f);    % if this works, then the subfield must be present
+%  r = true;
+%catch
+%  r = false;                % apparently the subfield is not present
+%end
+
+if isempty(f) || isempty(s)
+  r = false;
+else
+  t = textscan(f,'%s','delimiter','.');
+  t = t{1};
   r = true;
-catch
-  r = false;                % apparently the subfield is not present
+  for k = 1:numel(t)
+    if isfield(s, t{k})
+      s = s.(t{k});
+    else
+      r = false;
+      return;
+    end
+  end
 end

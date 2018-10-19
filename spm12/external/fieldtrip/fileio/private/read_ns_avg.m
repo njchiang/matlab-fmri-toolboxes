@@ -20,7 +20,7 @@ function [avg] = read_ns_avg(filename)
 
 % Copyright (C) 2002, Robert Oostenveld
 %
-% This file is part of FieldTrip, see http://www.ru.nl/neuroimaging/fieldtrip
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
 % for the documentation and details.
 %
 %    FieldTrip is free software: you can redistribute it and/or modify
@@ -36,7 +36,7 @@ function [avg] = read_ns_avg(filename)
 %    You should have received a copy of the GNU General Public License
 %    along with FieldTrip. If not, see <http://www.gnu.org/licenses/>.
 %
-% $Id: read_ns_avg.m 7123 2012-12-06 21:21:38Z roboos $
+% $Id$
 
 % read the neuroscan header 
 avg = read_ns_hdr(filename);
@@ -51,7 +51,7 @@ end
 % open the file and seek towards the place where the raw data is
 fid = fopen(filename,'r','ieee-le');
 if fid<0
-  error(['cannot open ', filename]);
+  ft_error(['cannot open ', filename]);
 else
   fseek(fid, 900, 'cof');       % skip general header
   fseek(fid, 75*avg.nchan, 'cof');  % skip channel headers

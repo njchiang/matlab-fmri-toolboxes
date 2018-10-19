@@ -1,11 +1,11 @@
 function invert = spm_cfg_eeg_inv_invert
-% configuration file for configuring imaging source inversion
+% Configuration file for configuring imaging source inversion
 % reconstruction
-%_______________________________________________________________________
-% Copyright (C) 2010 Wellcome Trust Centre for Neuroimaging
+%__________________________________________________________________________
+% Copyright (C) 2010-2016 Wellcome Trust Centre for Neuroimaging
 
 % Vladimir Litvak
-% $Id: spm_cfg_eeg_inv_invert.m 5568 2013-07-01 11:07:18Z vladimir $
+% $Id: spm_cfg_eeg_inv_invert.m 7076 2017-05-19 12:47:36Z vladimir $
 
 D = cfg_files;
 D.tag = 'D';
@@ -25,12 +25,14 @@ all = cfg_const;
 all.tag = 'all';
 all.name = 'All';
 all.val  = {1};
+all.help = {''};
 
 condlabel = cfg_entry;
 condlabel.tag = 'condlabel';
 condlabel.name = 'Condition label';
 condlabel.strtype = 's';
 condlabel.val = {''};
+condlabel.help = {''};
 
 conditions = cfg_repeat;
 conditions.tag = 'conditions';
@@ -45,6 +47,7 @@ whatconditions.tag = 'whatconditions';
 whatconditions.name = 'What conditions to include?';
 whatconditions.values = {all, conditions};
 whatconditions.val = {all};
+whatconditions.help = {'What conditions to include?'};
 
 standard = cfg_const;
 standard.tag = 'standard';
@@ -56,8 +59,8 @@ invtype = cfg_menu;
 invtype.tag = 'invtype';
 invtype.name = 'Inversion type';
 invtype.help = {'Select the desired inversion type'};
-invtype.labels = {'GS', 'ARD', 'MSP (GS+ARD)' 'COH', 'IID', 'EBB'};
-invtype.values = {'GS', 'ARD', 'MSP', 'LOR', 'IID', 'EBB'};
+invtype.labels = {'MSP (GS)',  'COH', 'IID', 'EBB'};
+invtype.values = {'GS',        'LOR', 'IID', 'EBB'};
 invtype.val = {'GS'};
 
 woi = cfg_entry;
@@ -120,12 +123,21 @@ radius.name = 'Radius of VOI (mm)';
 radius.strtype = 'r';
 radius.num = [1 1];
 radius.val = {32};
+radius.help = {''};
+
+mask  = cfg_files;
+mask.tag = 'mask';
+mask.name = 'Mask image';
+mask.filter = '(.*\.nii(,\d+)?$)|(.*\.img(,\d+)?$)';
+mask.num = [0 1];
+mask.help = {'Select a mask image'};
+mask.val = {{''}};
 
 restrict = cfg_branch;
 restrict.tag = 'restrict';
 restrict.name = 'Restrict solutions';
 restrict.help = {'Restrict solutions to pre-specified VOIs'};
-restrict.val  = {locs, radius};
+restrict.val  = {locs, radius, mask};
 
 custom = cfg_branch;
 custom.tag = 'custom';
@@ -144,7 +156,7 @@ modality = cfg_menu;
 modality.tag = 'modality';
 modality.name = 'Select modalities';
 modality.help = {'Select modalities for the inversion (only relevant for multimodal datasets).'};
-modality.labels = {'All', 'EEG', 'MEG', 'MEGPLANAR', 'EEG+MEG', 'MEG+MEGPLANAR', 'EEG+MEGPLANAR'};
+modality.labels = {'All', 'EEG', 'MEG', 'MEGPLANAR', 'EEG+MEG', 'MEG+MEGPLANAR', 'EEG+MEGPLANAR', 'EEG+MEG+MEGPLANAR'};
 modality.values = {
     {'All'}
     {'EEG'}
@@ -153,6 +165,7 @@ modality.values = {
     {'EEG', 'MEG'}
     {'MEG', 'MEGPLANAR'}
     {'EEG', 'MEGPLANAR'}
+    {'EEG', 'MEG', 'MEGPLANAR'}
     }';
 modality.val = {{'All'}};
 
@@ -210,6 +223,11 @@ if isfield(job.isstandard, 'custom')
     if ~isempty(job.isstandard.custom.restrict.locs)
         inverse.xyz = job.isstandard.custom.restrict.locs;
         inverse.rad = job.isstandard.custom.restrict.radius;
+    end
+    
+    P = char(job.isstandard.custom.restrict.mask);
+    if ~isempty(P)
+        inverse.mask = P;
     end
 end
 

@@ -84,14 +84,14 @@ function [Ep,Eg,Cp,Cg,S,F,L] = spm_nlsi_N(M,U,Y)
 % Copyright (C) 2008 Wellcome Trust Centre for Neuroimaging
  
 % Karl Friston
-% $Id: spm_nlsi_N.m 5892 2014-02-23 11:00:16Z karl $
+% $Id: spm_nlsi_N.m 7143 2017-07-29 18:50:38Z karl $
  
 % options
 %--------------------------------------------------------------------------
 try, M.nograph; catch, M.nograph = 0;  end
 try, M.Nmax;    catch, M.Nmax    = 64; end
 try, M.Gmax;    catch, M.Gmax    = 8;  end
-try, M.Hmax;    catch, M.Hmax    = 8;  end
+try, M.Hmax;    catch, M.Hmax    = 4;  end
 
 % figure (unless disabled)
 %--------------------------------------------------------------------------
@@ -121,7 +121,11 @@ if isfield(M,'FS')
     %----------------------------------------------------------------------
     try
         y  = feval(M.FS,Y.y,M);
-        FS = inline([M.FS '(y,M)'],'y','M');
+        try
+            FS = inline([M.FS '(y,M)'],'y','M');
+        catch
+            FS = M.FS;
+        end
  
     % FS(y)
     %----------------------------------------------------------------------
@@ -220,6 +224,9 @@ nq    = nr*ns/nt;           % for compact Kronecker form of M-step
 % confounds (if specified)
 %--------------------------------------------------------------------------
 try
+    if isempty(Y.X0)
+        Y.X0 = sparse(ns,0);
+    end
     dgdu = kron(speye(nr,nr),Y.X0);
 catch
     dgdu = sparse(ns*nr,0);
@@ -253,6 +260,8 @@ end
 %--------------------------------------------------------------------------
 if isstruct(M.pC); M.pC = spm_diag(spm_vec(M.pC)); end
 if isstruct(M.gC); M.gC = spm_diag(spm_vec(M.gC)); end
+if isvector(M.pC); M.pC = spm_diag(M.pC); end
+if isvector(M.gC); M.gC = spm_diag(M.gC); end
 
 % dimension reduction of parameter space
 %--------------------------------------------------------------------------
@@ -261,6 +270,7 @@ Vg    = spm_svd(M.gC,0);
 np    = size(Vp,2);                   % number of parameters (f)
 ng    = size(Vg,2);                   % number of parameters (g)
 nu    = size(dgdu,2);                 % number of parameters (u)
+
  
 % prior moments
 %--------------------------------------------------------------------------
@@ -273,11 +283,13 @@ uE    = sparse(nu,1);
 sw    = warning('off','all');
 pC    = Vp'*M.pC*Vp;
 gC    = Vg'*M.gC*Vg;
-uC    = speye(nu,nu)*exp(32);
+uC    = speye(nu,nu)*exp(16);
 ipC   = spm_inv(pC);                           % p - state parameters
 igC   = spm_inv(gC);                           % g - observer parameters
 iuC   = spm_inv(uC);                           % u - fixed parameters
 ibC   = spm_cat(spm_diag({ipC,igC,iuC}));      % all parameters
+bC    = speye(size(ibC))*exp(-16);
+
  
 % initialize conditional density
 %--------------------------------------------------------------------------
@@ -294,7 +306,6 @@ else
 end
 
 
-
 % EM
 %==========================================================================
 warning(sw); sw = warning('off','all');
@@ -302,6 +313,7 @@ criterion       = [0 0 0 0];
 
 C.F   = -Inf;                                   % free energy
 v     = -4;                                     % log ascent rate
+dgdp  = zeros(ny,np);
 dgdg  = zeros(ny,ng);
 dFdh  = zeros(nh,1);
 dFdhh = zeros(nh,nh);
@@ -309,6 +321,7 @@ dFdhh = zeros(nh,nh);
  
 % Optimize p: parameters of f(x,u,p)
 %==========================================================================
+EP     = [];
 for ip = 1:M.Nmax
  
     % time
@@ -317,13 +330,17 @@ for ip = 1:M.Nmax
     
     % predicted hidden states (x) and dxdp
     %----------------------------------------------------------------------
-    [dxdp,x] = spm_diff(IS,Ep,M,U,1,{Vp});
- 
+    [dxdp,x] = spm_diff(IS,Ep,M,U,1,{Vp});  
     
-    % check for dissipative dynamics
+    % check for inital iterations and dissipative dynamics
     %----------------------------------------------------------------------
     if all(isfinite(spm_vec(x)))
         Gmax = M.Gmax;
+        if ip < 8
+            vg = -4;
+        else
+            vg = 2;
+        end
     else
         Gmax = 0;
     end
@@ -362,7 +379,7 @@ for ip = 1:M.Nmax
         end
   
         % Optimize F(h): parameters of iS(h)
-        %==================================================================
+        %==================================================================        
         dgdb   = [dgdp dgdg dgdu];           
         for ih = 1:M.Hmax
  
@@ -375,7 +392,7 @@ for ip = 1:M.Nmax
             S     = spm_inv(iS);
             iS    = kron(speye(nq),iS);
             dFdbb = dgdb'*iS*dgdb + ibC;
-            Cb    = spm_inv(dFdbb);
+            Cb    = spm_inv(dFdbb) + bC;
             
             % precision operators for M-Step
             %--------------------------------------------------------------
@@ -411,7 +428,7 @@ for ip = 1:M.Nmax
  
             % convergence
             %--------------------------------------------------------------
-            if dFdh'*dh < 1e-2, break, end
+            if dFdh'*dh < exp(-2), break, end
  
         end
  
@@ -435,13 +452,13 @@ for ip = 1:M.Nmax
  
         % Conditional updates of parameters (g)
         %------------------------------------------------------------------
-        dg    = spm_dx(dFdgg,dFdg,{4});
+        dg    = spm_dx(dFdgg,dFdg,{vg});
         Eg    = spm_unvec(spm_vec(Eg) + Vg*dg,Eg);
          
         % convergence
         %------------------------------------------------------------------
         dG    = dFdg'*dg;
-        if ig > 1 && dG < 1e-2, break, end
+        if ig > 1 && dG < exp(-2), break, end
         
     end
     
@@ -478,7 +495,7 @@ for ip = 1:M.Nmax
  
         % decrease regularization
         %------------------------------------------------------------------
-        v     = min(v + 1/2,8);
+        v     = min(v + 1/2,4);
         str   = 'EM(+)';
  
         % accept current estimates
@@ -489,8 +506,8 @@ for ip = 1:M.Nmax
         C.Eu  = Eu;
         C.h   = h;
         C.F   = F;
-        C.L   = L;
-  
+        C.L   = L;   
+        
     else
  
         % reset expansion point
@@ -512,17 +529,25 @@ for ip = 1:M.Nmax
     %======================================================================
     dp    = spm_dx(dFdpp,dFdp,{v});
     Ep    = spm_unvec(spm_vec(Ep) + Vp*dp,Ep);
- 
     
+    % diagnostic
+    %----------------------------------------------------------------------
+    % EP(:,end + 1) = spm_vec(Ep);
+ 
     
     % subplot times
     %----------------------------------------------------------------------
-    if length(Y.pst) == size(yp,1)
-        yt = Y.pst;
-    else
+    try
+        if length(Y.pst) == size(yp,1)
+            yt = Y.pst;
+        else
+            yt = (1:size(yp,1))*Y.dt*1000;
+        end
+    catch
         yt = (1:size(yp,1))*Y.dt*1000;
     end
- 
+    
+    
     % graphics
     %----------------------------------------------------------------------
     if exist('Fsi', 'var')
@@ -531,9 +556,13 @@ for ip = 1:M.Nmax
         % subplot prediction
         %------------------------------------------------------------------
         subplot(3,1,1)
-        plot(yt,x)
-        xlabel('time (ms)')
-        set(gca,'XLim',[yt(1) yt(end)])
+        try
+            plot(yt,x)
+            xlabel('time (ms)')
+            set(gca,'XLim',[yt(1) yt(end)])
+        catch
+            plot(x), spm_axis tight
+        end
         title(sprintf('%s: %i','E-Step: hidden states',ip))
         grid on
         
@@ -586,5 +615,9 @@ Cg     = Vg*C.Cb((1:ng) + np,(1:ng) + np)*Vg';
 F      = C.F;
 L      = C.L;
 warning(sw);
- 
+
+% diagnostic
+%--------------------------------------------------------------------------
+% save('spm_nlsi_N_Ep','EP')
+
 return

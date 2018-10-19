@@ -1,11 +1,11 @@
-function [d] = det2x2(x)
+function d = det2x2(x)
 
 % DET2X2 computes determinant of matrix x, using explicit analytic definition
-% if size(x,1) < 4, otherwise use matlab det-function
+% if size(x,1) < 4, otherwise use MATLAB det-function
 
 % Copyright (C) 2012, Donders Centre for Cognitive Neuroimaging, Nijmegen, NL
 %
-% This file is part of FieldTrip, see http://www.ru.nl/neuroimaging/fieldtrip
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
 % for the documentation and details.
 %
 %    FieldTrip is free software: you can redistribute it and/or modify
@@ -21,7 +21,7 @@ function [d] = det2x2(x)
 %    You should have received a copy of the GNU General Public License
 %    along with FieldTrip. If not, see <http://www.gnu.org/licenses/>.
 %
-% $Id: det2x2.m 7124 2012-12-06 21:21:53Z roboos $
+% $Id$
 
 siz = size(x);
 if all(siz(1:2)==2),
@@ -36,7 +36,6 @@ elseif all(siz(1:2)==3),
 elseif numel(siz)==2,
   d = det(x);
 else
-  error('not implemented');
+  ft_error('not implemented');
   % write for loop for the higher dimensions, using normal inv
 end
-

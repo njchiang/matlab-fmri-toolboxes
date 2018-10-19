@@ -12,10 +12,12 @@ function [x, y] = ft_select_box(handle, eventdata, varargin)
 % Optional input arguments should come in key-value pairs and can include
 %   'multiple' = true/false, make multiple selections by dragging, clicking
 %                in one will finalize the selection (default = false)
+%
+% See also FT_SELECT_CHANNEL, FT_SELECT_POINT, FT_SELECT_POINT3D, FT_SELECT_RANGE, FT_SELECT_VOXEL 
 
 % Copyright (C) 2006, Robert Oostenveld
 %
-% This file is part of FieldTrip, see http://www.ru.nl/neuroimaging/fieldtrip
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
 % for the documentation and details.
 %
 %    FieldTrip is free software: you can redistribute it and/or modify
@@ -31,13 +33,13 @@ function [x, y] = ft_select_box(handle, eventdata, varargin)
 %    You should have received a copy of the GNU General Public License
 %    along with FieldTrip. If not, see <http://www.gnu.org/licenses/>.
 %
-% $Id: ft_select_box.m 9515 2014-05-13 13:30:43Z roboos $
+% $Id$
 
 % get the optional arguments
 multiple = ft_getopt(varargin, 'multiple', false);
 
 if istrue(multiple)
-  error('not yet implemented');
+  ft_error('not yet implemented');
 else
   k = waitforbuttonpress;
   point1 = get(gca,'CurrentPoint');    % button down detected

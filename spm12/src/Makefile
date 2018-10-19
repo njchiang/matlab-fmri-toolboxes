@@ -1,9 +1,9 @@
 #!/usr/bin/env make -f
 # General Makefile to compile SPM C-MEX files
 #
-# Copyright (C) 1991-2014 Wellcome Trust Centre for Neuroimaging
+# Copyright (C) 1991-2015 Wellcome Trust Centre for Neuroimaging
 #
-# $Id: Makefile 6154 2014-09-04 16:29:19Z guillaume $
+# $Id: Makefile 6761 2016-03-30 15:11:20Z guillaume $
 #
 ###############################################################################
 #
@@ -51,10 +51,11 @@ SPMMEX  =\
 	spm_dilate_erode.$(SUF) spm_bwlabel.$(SUF) spm_get_lm.$(SUF)\
 	spm_voronoi.$(SUF) spm_mesh_utils.$(SUF) \
 	spm_mrf.$(SUF) spm_diffeo.$(SUF) spm_field.$(SUF) \
-	spm_cat.$(SUF)
+	spm_cat.$(SUF) spm_jsonread.$(SUF)
 
 SUBDIRS =\
 	@file_array/private \
+	@gifti/private \
 	@xmltree/private \
 	toolbox/FieldMap
 
@@ -79,6 +80,9 @@ tarball: all tbx-tarball verb.tarball
 		$(TAR) Af spm_mex.tar  ../$$p/spm_mex.tar;\
 	done
 	$(ZIP) spm_mex.tar
+
+doc:
+	@ $(MAKE) -C ../man --no-print-directory
 
 ###############################################################################
 # Private make targets
@@ -290,7 +294,10 @@ spm_diffeo.$(SUF): spm_diffeo.c shoot_diffeo3d.c shoot_optim3d.c shoot_multiscal
 	$(MEX) spm_diffeo.c shoot_diffeo3d.c shoot_optim3d.c shoot_multiscale.c shoot_regularisers.c shoot_expm3.c shoot_invdef.c shoot_dartel.c shoot_boundary.c shoot_bsplines.c bsplines.c -DIMAGE_SINGLE $(MEXEND)
 
 spm_field.$(SUF): spm_field.c  shoot_optimN.c shoot_multiscale.c shoot_boundary.c
-	$(MEX)  spm_field.c shoot_optimN.c shoot_multiscale.c shoot_boundary.c $(MEXEND)
+	$(MEX) spm_field.c shoot_optimN.c shoot_multiscale.c shoot_boundary.c $(MEXEND)
+
+spm_jsonread.$(SUF): spm_jsonread.c jsmn.h jsmn.c
+	$(MEX) spm_jsonread.c jsmn.c -DJSMN_PARENT_LINKS $(MEXEND)
 
 ###############################################################################
 # Display Messages
@@ -320,9 +327,6 @@ verb.mexglx:
 verb.mexa64:
 	$(call verb, "Linux compilation (x86-64)")
 
-verb.mexmac:
-	$(call verb, "MacOS compilation (PowerPC)")
-
 verb.mexmaci:
 	$(call verb, "MacOS compilation (Intel 32 bit)")
 
@@ -340,7 +344,6 @@ verb.distclean.end:
         
 verb.install.end:
 	$(call verb, "Installation: done")
-
 
 verb.external:
 	$(call verb, "In external")

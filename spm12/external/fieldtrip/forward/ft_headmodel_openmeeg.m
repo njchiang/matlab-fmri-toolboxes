@@ -1,4 +1,4 @@
-function vol = ft_headmodel_openmeeg(geom, varargin)
+function headmodel = ft_headmodel_openmeeg(mesh, varargin)
 
 % FT_HEADMODEL_OPENMEEG creates a volume conduction model of the
 % head using the boundary element method (BEM). This function takes
@@ -21,18 +21,19 @@ function vol = ft_headmodel_openmeeg(geom, varargin)
 % and http://gforge.inria.fr/frs/?group_id=435.
 %
 % Use as
-%   vol = ft_headmodel_openmeeg(geom, ...)
+%   headmodel = ft_headmodel_openmeeg(mesh, ...)
 %
 % Optional input arguments should be specified in key-value pairs and can
 % include
-%   hdmfile          = string, filename with BEM headmodel
 %   conductivity     = vector, conductivity of each compartment
 %
 % See also FT_PREPARE_VOL_SENS, FT_COMPUTE_LEADFIELD
 
-%$Id: ft_headmodel_openmeeg.m 8305 2013-07-02 09:59:57Z roboos $
+%$Id$
 
-ft_hastoolbox('openmeeg', 1);
+ft_hastoolbox('openmeeg', 1);  % add to path (if not yet on path)
+openmeeg_license;              % show the license (only once)
+prefix = om_checkombin;        % check the installation of the binaries
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % the first part is largely shared with the dipoli and bemcp implementation
@@ -41,65 +42,62 @@ ft_hastoolbox('openmeeg', 1);
 % get the optional arguments
 conductivity    = ft_getopt(varargin, 'conductivity');
 
-% copy the boundaries from the geometry into the volume conduction model
-if isfield(geom,'bnd')
-  geom = geom.bnd;
+% copy the boundaries from the mesh into the volume conduction model
+if isfield(mesh, 'bnd')
+  mesh = mesh.bnd;
 end
 
+% rename pnt into pos
+mesh = fixpos(mesh);
+
 % start with an empty volume conductor
-vol = [];
-vol.bnd = geom;
+headmodel = [];
+headmodel.bnd = mesh;
 
 % determine the number of compartments
-numboundaries = length(vol.bnd);
+numboundaries = length(headmodel.bnd);
 
 % determine the desired nesting of the compartments
-order = surface_nesting(vol.bnd, 'outsidefirst');
+order = surface_nesting(headmodel.bnd, 'outsidefirst');
 
 % rearrange boundaries and conductivities
-if numel(vol.bnd)>1
+if numel(headmodel.bnd)>1
   fprintf('reordering the boundaries to: ');
   fprintf('%d ', order);
   fprintf('\n');
   % update the order of the compartments
-  vol.bnd = vol.bnd(order);
+  headmodel.bnd = headmodel.bnd(order);
 end
 
 if isempty(conductivity)
-  warning('No conductivity is declared, Assuming standard values\n')
+  ft_warning('No conductivity is declared, Assuming standard values\n')
   if numboundaries == 1
     conductivity = 1;
   elseif numboundaries == 3
     % skin/skull/brain
     conductivity = [1 1/80 1] * 0.33;
   else
-    error('Conductivity values are required for 2 shells. More than 3 shells not allowed')
+    ft_error('Conductivity values are required for 2 shells. More than 3 shells not allowed')
   end
-  vol.cond = conductivity;
+  headmodel.cond = conductivity;
 else
   if numel(conductivity)~=numboundaries
-    error('a conductivity value should be specified for each compartment');
+    ft_error('a conductivity value should be specified for each compartment');
   end
   % update the order of the compartments
-  vol.cond = conductivity(order);
+  headmodel.cond = conductivity(order);
 end
 
-vol.skin_surface = 1;
-vol.source = numboundaries;
+headmodel.skin_surface = 1;
+headmodel.source = numboundaries;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % this uses an implementation that was contributed by INRIA Odyssee Team
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-% show the license once
-% openmeeg_license
-
-% check that the binaries are ok
-om_checkombin;
-
 % store the current path and change folder to the temporary one
 tmpfolder = cd;
-bndom = vol.bnd;
+bndom = headmodel.bnd;
 
 try
   cd(tempdir)
@@ -117,10 +115,10 @@ try
     end
   end
    
-  for ii=1:length(vol.bnd)
+  for ii=1:length(headmodel.bnd)
     [junk,tname] = fileparts(tempname);
     bndfile{ii} = [tname '.tri'];
-    om_save_tri(bndfile{ii}, bndom(ii).pnt, bndom(ii).tri);
+    om_save_tri(bndfile{ii}, bndom(ii).pos, bndom(ii).tri);
   end
   
   % these will hold the shell script and the inverted system matrix
@@ -134,15 +132,15 @@ try
   [tmp,tname] = fileparts(tempname);
   condfile  = [tname '.cond'];
   [tmp,tname] = fileparts(tempname);
-  geomfile  = [tname '.geom'];
+  geomfile  = [tname '.mesh'];
   [tmp,tname] = fileparts(tempname);
   hmfile    = [tname '.bin'];
   [tmp,tname] = fileparts(tempname);
   hminvfile = [tname '.bin'];
   
-  % write conductivity and geometry files
+  % write conductivity and mesh files
   om_write_geom(geomfile,bndfile);
-  om_write_cond(condfile,vol.cond);
+  om_write_cond(condfile,headmodel.cond);
   
   % Exe file
   efid = fopen(exefile, 'w');
@@ -150,11 +148,11 @@ try
   if ~ispc
     fprintf(efid,'#!/usr/bin/env bash\n');
     fprintf(efid,['export OMP_NUM_THREADS=',num2str(omp_num_threads),'\n']);
-    fprintf(efid,['om_assemble -HM ./' geomfile ' ./' condfile ' ./' hmfile ' 2>&1 > /dev/null\n']);
-    fprintf(efid,['om_minverser ./' hmfile ' ./' hminvfile ' 2>&1 > /dev/null\n']);
+    fprintf(efid,[prefix 'om_assemble -HM ./' geomfile ' ./' condfile ' ./' hmfile ' 2>&1 > /dev/null\n']);
+    fprintf(efid,[prefix 'om_minverser ./' hmfile ' ./' hminvfile ' 2>&1 > /dev/null\n']);
   else
-    fprintf(efid,['om_assemble -HM ./' geomfile ' ./' condfile ' ./' hmfile '\n']);
-    fprintf(efid,['om_minverser ./' hmfile ' ./' hminvfile '\n']);
+    fprintf(efid,[prefix 'om_assemble -HM ./' geomfile ' ./' condfile ' ./' hmfile '\n']);
+    fprintf(efid,[prefix 'om_minverser ./' hmfile ' ./' hminvfile '\n']);
   end
   
   fclose(efid);
@@ -170,35 +168,35 @@ end
 try
   % execute OpenMEEG and read the resulting file
   if ispc
-    dos([exefile]);
+    dos(exefile);
   else
     version = om_getgccversion;
     if version>3
       dos(['./' exefile]);
     else
-      error('non suitable GCC compiler version (must be superior to gcc3)');
+      ft_error('non suitable GCC compiler version (must be superior to gcc3)');
     end
   end
-  vol.mat = om_load_sym(hminvfile,'binary');
-  cleaner(vol,bndfile,condfile,geomfile,hmfile,hminvfile,exefile)
+  headmodel.mat = om_load_sym(hminvfile,'binary');
+  cleaner(headmodel,bndfile,condfile,geomfile,hmfile,hminvfile,exefile)
   cd(tmpfolder)
 catch
-  warning('an error ocurred while running OpenMEEG');
+  ft_warning('an error ocurred while running OpenMEEG');
   disp(lasterr);
-  cleaner(vol,bndfile,condfile,geomfile,hmfile,hminvfile,exefile)
+  cleaner(headmodel,bndfile,condfile,geomfile,hmfile,hminvfile,exefile)
   cd(tmpfolder)
 end
 
 % remember the type of volume conduction model
-vol.type = 'openmeeg';
+headmodel.type = 'openmeeg';
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % SUBFUNCTION
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function cleaner(vol,bndfile,condfile,geomfile,hmfile,hminvfile,exefile)
+function cleaner(headmodel,bndfile,condfile,geomfile,hmfile,hminvfile,exefile)
 % delete the temporary files
-for i=1:length(vol.bnd)
+for i=1:length(headmodel.bnd)
   delete(bndfile{i})
 end
 delete(condfile);
@@ -210,23 +208,23 @@ delete(exefile);
 function ok = checknormals(bnd)
 % FIXME: this method is rigorous only for star shaped surfaces
 ok = 0;
-pnt = bnd.pnt;
+pos = bnd.pos;
 tri = bnd.tri;
 % translate to the center
-org = mean(pnt,1);
-pnt(:,1) = pnt(:,1) - org(1);
-pnt(:,2) = pnt(:,2) - org(2);
-pnt(:,3) = pnt(:,3) - org(3);
+org = mean(pos,1);
+pos(:,1) = pos(:,1) - org(1);
+pos(:,2) = pos(:,2) - org(2);
+pos(:,3) = pos(:,3) - org(3);
 
-w = sum(solid_angle(pnt, tri));
+w = sum(solid_angle(pos, tri));
 
 if w<0 && (abs(w)-4*pi)<1000*eps
   ok = 0;
-  warning('your normals are outwards oriented\n')
+  ft_warning('your normals are outwards oriented\n')
 elseif w>0 && (abs(w)-4*pi)<1000*eps
   ok = 1;
-%   warning('your normals are inwards oriented')
+%   ft_warning('your normals are inwards oriented')
 else
-  error('your surface probably is irregular\n')
+  ft_error('your surface probably is irregular\n')
   ok = 0;
 end

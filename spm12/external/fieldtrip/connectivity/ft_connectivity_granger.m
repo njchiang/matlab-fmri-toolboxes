@@ -44,9 +44,9 @@ function [granger, v, n] = ft_connectivity_granger(H, Z, S, varargin)
 % The code is loosely based on the code used in:
 % Brovelli, et. al., PNAS 101, 9849-9854 (2004).
 %
-% Copyright (C) 2009-2013, Jan-Mathijs Schoffelen
+% Copyright (C) 2009-2017, Jan-Mathijs Schoffelen
 %
-% This file is part of FieldTrip, see http://www.ru.nl/neuroimaging/fieldtrip
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
 % for the documentation and details.
 %
 %    FieldTrip is free software: you can redistribute it and/or modify
@@ -62,7 +62,7 @@ function [granger, v, n] = ft_connectivity_granger(H, Z, S, varargin)
 %    You should have received a copy of the GNU General Public License
 %    along with FieldTrip. If not, see <http://www.gnu.org/licenses/>.
 %
-% $Id: ft_connectivity_granger.m 9095 2014-01-13 13:08:33Z jorhor $
+% $Id$
 
 method  = ft_getopt(varargin, 'method',  'granger');
 hasjack = ft_getopt(varargin, 'hasjack', 0);
@@ -86,7 +86,7 @@ issquare = length(strfind(dimord, 'chan'))==2 || length(strfind(dimord, 'pos'))=
 switch method
 case 'granger'
 
-  if issquare && isempty(powindx),
+  if issquare && isempty(powindx)
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%  
     % data are chan_chan_therest
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -211,7 +211,7 @@ case 'granger'
       end
     end
     
-  elseif ~issquare && isstruct(powindx)
+  elseif ~issquare && isstruct(powindx) && isfield(powindx, 'n')
     %%%%%%%%%%%%%%%%%%%%%%
     %blockwise conditional
     %%%%%%%%%%%%%%%%%%%%%%
@@ -232,6 +232,56 @@ case 'granger'
       outsum = outsum + tmp;
       outssq = outssq + tmp.^2;
     end
+  
+  elseif ~issquare && isstruct(powindx)
+    %%%%%%%%%%%%%%%%%%%%%%
+    %triplet conditional
+    %%%%%%%%%%%%%%%%%%%%%%
+    
+    % decode from the powindx struct which rows in the data correspond with
+    % the triplets, and which correspond with the duplets
+    ublockindx = unique(powindx.blockindx);
+    nperblock  = zeros(size(ublockindx));
+    for k = 1:numel(ublockindx)
+      nperblock(k,1) = sum(powindx.blockindx==ublockindx(k));
+    end
+    if ~all(ismember(nperblock,[4 9]))
+      error('the data should be a mixture of trivariate and bivariate decompositions');
+    end
+    indx_triplets = ismember(powindx.blockindx, ublockindx(nperblock==9)); ntriplets = sum(indx_triplets)./9;
+    indx_duplets  = ismember(powindx.blockindx, ublockindx(nperblock==4)); nduplets  = sum(indx_duplets)./4;
+    
+    % this assumes well-behaved powindx.cmbindx
+    cmbindx2 = reshape(powindx.cmbindx(indx_duplets, 1), 2, [])';
+    cmbindx3 = reshape(powindx.cmbindx(indx_triplets,1), 3, [])';
+    
+    cmbindx2 = cmbindx2(1:2:end,:);
+    cmbindx3 = cmbindx3(1:3:end,:);
+    
+    cmbindx  = powindx.outindx;
+    
+    n   = size(H,1);
+    siz = size(H);
+    
+    outsum = zeros(size(cmbindx,1), size(H,3));
+    outssq = outsum;
+        
+    % call the low-level function
+    for k = 1:n
+      H3 = reshape(H(k,indx_triplets,:,:), [3 3 ntriplets siz(3:end)]);
+      Z3 = reshape(Z(k,indx_triplets),     [3 3 ntriplets]);
+      
+      H2 = reshape(H(k,indx_duplets,:,:), [2 2 nduplets siz(3:end)]);
+      Z2 = reshape(Z(k,indx_duplets),     [2 2 nduplets]);
+      
+      tmp  = triplet_conditionalgranger(H3,Z3,cmbindx3,H2,Z2,cmbindx2,cmbindx);
+          
+      outsum = outsum + tmp;
+      outssq = outssq + tmp.^2;
+    end
+    
+    
+    
   end
   
 case 'instantaneous'
@@ -288,17 +338,19 @@ case 'instantaneous'
         outssq(icross2,:,:) = outssq(icross2,:,:) + reshape((log(numer./denom)).^2, [1 siz(3:end)]);
       end
     end
-  elseif iscell(powindx)
+  elseif issquare && iscell(powindx)
     % blockwise granger
     % H = transfer function nchan x nchan x nfreq
     % Z = noise covariance  nchan x nchan
     % S = crosspectrum      nchan x nchan x nfreq
     % powindx{1} is a list of indices for block1
     % powindx{2} is a list of indices for block2
-    error('instantaneous causality is not implemented for blockwise factorizations');
+    ft_error('instantaneous causality is not implemented for blockwise factorizations');
   elseif isstruct(powindx)
     %blockwise conditional
-    error('blockwise conditional instantaneous causality is not implemented'); 
+    ft_error('blockwise conditional instantaneous causality is not implemented'); 
+  else
+    ft_error('not implemented');
   end
   
 case 'total'
@@ -345,15 +397,66 @@ case 'total'
       end
     end
   elseif issquare && iscell(powindx)
-    % blockwise granger
-    error('total interdependence is not implemented for blockwise factorizations');
+    % blockwise total interdependence
+    
+    % S = crosspectrum      nchan x nchan x nfreq
+    % powindx{k} is a list of indices for block k
+    
+    nblock = numel(powindx);
+    n      = size(S,1);
+    nfreq  = size(S,4);
+    
+    outsum = zeros(nblock,nblock,nfreq);
+    outssq = zeros(nblock,nblock,nfreq);
+    
+    for k = 1:nblock
+      for m = (k+1):nblock
+        indx  = [powindx{k}(:);powindx{m}(:)];
+        n1    = numel(powindx{k});
+        n2    = numel(powindx{m});
+        ntot  = n1+n2;
+        indx1 = 1:n1;
+        indx2 = (n1+1):ntot;
+         
+        for kk = 1:n
+          for jj = 1:nfreq
+            Sj = reshape(S(kk,indx,indx,jj), [ntot ntot]);
+            num1 = abs(det(Sj(indx1,indx1))); % numerical round off leads to tiny imaginary components
+            num2 = abs(det(Sj(indx2,indx2))); % numerical round off leads to tiny imaginary components
+            num  = num1.*num2;
+            denom = abs(det(Sj));
+                    
+            outsum(m,k,jj) = log( num./denom )    + outsum(m,k,jj);
+            outsum(k,m,jj) = log( num./denom )    + outsum(k,m,jj);
+            outssq(m,k,jj) = log( num./denom ).^2 + outssq(m,k,jj);
+            outssq(k,m,jj) = log( num./denom ).^2 + outssq(k,m,jj);
+          end
+        end
+        
+      end
+    end
+    
   elseif issquare && isstruct(powindx)
     %blockwise conditional
-    error('blockwise conditional total interdependence is not implemented'); 
+    ft_error('blockwise conditional total interdependence is not implemented'); 
+  end
+  
+case 'iis'
+  ft_warning('THIS IS EXPERIMENTAL CODE, USE AT YOUR OWN RISK!');
+  % this is experimental
+  if ~issquare && isempty(powindx)
+    A = transfer2coeffs(shiftdim(H),(0:size(H,3)-1));
+    ncmb = size(A,1)./4;
+    iis = coeffs2iis(reshape(A,[2 2 ncmb size(A,2)]),reshape(Z,[2 2 ncmb]));
+    iis = repmat(iis(:),[1 4])';
+    outsum = iis(:);
+    outssq = nan(size(outsum));   
+  else
+    ft_error('iis can only be computed when the input contains sets of bivariate factorizations');
   end
   
 otherwise
-  error('unsupported output requested');
+  ft_error('unsupported output requested');
 end
 
 granger = outsum./n;

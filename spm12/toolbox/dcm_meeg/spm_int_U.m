@@ -64,7 +64,7 @@ function [y] = spm_int_U(P,M,U)
 % Copyright (C) 2005 Wellcome Trust Centre for Neuroimaging
  
 % Karl Friston
-% $Id: spm_int_U.m 1189 2008-03-05 17:19:26Z karl $
+% $Id: spm_int_U.m 7148 2017-08-04 15:27:29Z karl $
  
 % convert U to U.u if necessary
 %--------------------------------------------------------------------------
@@ -108,7 +108,7 @@ end
 % check for delay operator
 %--------------------------------------------------------------------------
 try
-    [fx dfdx D] = f(x,u,P,M);
+    [fx,dfdx,D] = f(x,u,P,M);
 catch
     D = 1;
 end
@@ -126,9 +126,9 @@ for i = 1:ns
     
     % re-compute Jacobian if input changes
     %----------------------------------------------------------------------
-    if i == 1 | du*du' > 1e-6
+    if i == 1 || du*du' > 1e-6
         try
-            [fx dfdx] = feval(f,x,u,P,M);
+            [fx,dfdx] = feval(f,x,u,P,M);
         catch
             dfdx = spm_diff(f,x,u,P,M,1);
         end
@@ -144,7 +144,7 @@ for i = 1:ns
     
     % output - implement g(x)
     %----------------------------------------------------------------------
-    if length(g)
+    if ~isempty(g)
         y(:,i) = g(x,u,P,M);
     else
         y(:,i) = spm_vec(x);

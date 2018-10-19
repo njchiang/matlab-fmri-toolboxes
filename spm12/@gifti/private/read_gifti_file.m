@@ -7,7 +7,7 @@ function this = read_gifti_file(filename, this)
 % Copyright (C) 2008 Wellcome Trust Centre for Neuroimaging
 
 % Guillaume Flandin
-% $Id: read_gifti_file.m 5101 2012-12-07 18:23:20Z guillaume $
+% $Id: read_gifti_file.m 6895 2016-10-03 11:08:49Z guillaume $
 
 % Import XML-based GIfTI file
 %--------------------------------------------------------------------------
@@ -125,6 +125,16 @@ for i=1:length(c)
     end
 end
 
+if strcmp(s.attributes.Intent,'NIFTI_INTENT_POINTSET')
+    if isempty(s.space)
+        warning('Missing "CoordinateSystemTransformMatrix": assuming I.');
+        s.space = struct(...
+            'DataSpace','NIFTI_XFORM_UNKNOWN',...
+            'TransformedSpace','NIFTI_XFORM_UNKNOWN',...
+            'MatrixData',eye(4));
+    end
+end
+
 %==========================================================================
 function s = gifti_Space(t,uid)
 s = struct('DataSpace','', 'TransformedSpace','', 'MatrixData',[]);
@@ -155,13 +165,13 @@ end
 
 switch s.Encoding
     case 'ASCII'
-        d = sscanf(get(t,children(t,uid),'value'),tp.format);
+        d = feval(tp.conv,sscanf(get(t,children(t,uid),'value'),tp.format));
 
     case 'Base64Binary'
         d = typecast(sb(base64decode(get(t,children(t,uid),'value'))), tp.cast);
 
     case 'GZipBase64Binary'
-        d = typecast(dunzip(sb(base64decode(get(t,children(t,uid),'value')))), tp.cast);
+        d = typecast(zstream('D',sb(base64decode(get(t,children(t,uid),'value')))), tp.cast);
 
     case 'ExternalFileBinary'
         [p,f,e] = fileparts(s.ExternalFileName);

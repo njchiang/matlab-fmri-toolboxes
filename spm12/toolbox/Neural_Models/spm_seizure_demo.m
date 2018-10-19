@@ -14,7 +14,7 @@ function spm_seizure_demo
 % Copyright (C) 2008 Wellcome Trust Centre for Neuroimaging
  
 % Karl Friston
-% $Id: spm_seizure_demo.m 6112 2014-07-21 09:39:53Z karl $ 
+% $Id: spm_seizure_demo.m 6937 2016-11-20 12:30:40Z karl $ 
  
 
 % Model specification
@@ -26,8 +26,13 @@ rng('default')
 Nc    = 1;
 Ns    = 1;
 options.spatial  = 'LFP';
-options.model    = 'CMC';
+options.model    = 'TFM';
 options.analysis = 'TFA';
+
+% sub-population showing effect
+%--------------------------------------------------------------------------
+pop = 2;
+
 M.dipfit.model = options.model;
 M.dipfit.type  = options.spatial;
 M.dipfit.Nc    = Nc;
@@ -50,12 +55,12 @@ pE.c   = [-8; 0];                  % log amplitude and f^(-a) exponent
 
 
 % exogenous input-dependent parameters
-%==========================================================================         
+%==========================================================================        
 np     = length(spm_vec(pE));
 nx     = length(spm_vec(x ));
 nu     = size(pE.C,2);
 i      = spm_fieldindices(pE,'G');
-pE.X   = sparse(i(1),1,1,np,nu);
+pE.X   = sparse(i(pop),1,1,np,nu);
 pE.Y   = sparse(np,nx);
 u      = sparse(1,nu);
 
@@ -103,14 +108,14 @@ axis square
 xlabel('time (ms)')
 
 
-% compute transfer functions for different inhibitory connections
+% compute transfer functions for different (self) inhibitory connections
 %--------------------------------------------------------------------------
 p     = linspace(-2,2,64);
 for i = 1:length(p)
-    P       = pE;
-    P.G(1)  = p(i);
-    [G w]   = spm_csd_mtf(P,M);
-    GW(:,i) = abs(G{1});
+    P        = pE;
+    P.G(pop) = p(i);
+    [G w]    = spm_csd_mtf(P,M);
+    GW(:,i)  = abs(G{1});
 end
 
 subplot(2,2,3)
@@ -143,7 +148,7 @@ U.u   = sparse(N,M.m);
 
 % exogenous input
 %--------------------------------------------------------------------------
-U.u(:,1) = tanh((t - 1)*8)*1;
+U.u(:,1) = tanh((t - 1)*8)/2;
 M.W      = inv(diag(sparse(1,1,1,1,M.n) + exp(-32)));
 LFP      = spm_int_sde(pE,M,U);
  
@@ -168,7 +173,7 @@ spm_axis tight
 W     = 128;
 TFR   = spm_wft(LFP,w*W*U.dt,W);
 subplot(4,1,3)
-imagesc(t,w,abs(TFR));
+imagesc(t,w,spm_en(abs(TFR)));
 title('time-frequency response','FontSize',16)
 axis  xy
 xlabel('time (s)')
@@ -184,7 +189,7 @@ csd       = spm_csd_int(pE,M,U);
 % predicted time frequency response
 %--------------------------------------------------------------------------
 subplot(4,1,4)
-imagesc(t,w,abs(csd{1}'));
+imagesc(t,w,spm_en(abs(csd{1}')));
 title('Predicted response','FontSize',16)
 axis xy
 xlabel('time (s)')

@@ -13,7 +13,7 @@ function varargout=spm_platform(varargin)
 %        - 'user'    - returns username
 %        - 'host'    - returns system's host name
 %        - 'tempdir' - returns name of temp directory
-%        - 'drives'  - returns string containing valid drive letters
+%        - 'desktop' - returns whether or not the Desktop is in use
 %
 % FORMAT PlatFontNames = spm_platform('fonts')
 % Returns structure with fields named after the generic (UNIX) fonts, the
@@ -49,10 +49,10 @@ function varargout=spm_platform(varargin)
 % Platform specific definitions are contained in the data structures at
 % the beginning of the init_platform subfunction at the end of this file.
 %__________________________________________________________________________
-% Copyright (C) 1999-2012 Wellcome Trust Centre for Neuroimaging
+% Copyright (C) 1999-2017 Wellcome Trust Centre for Neuroimaging
 
 % Matthew Brett
-% $Id: spm_platform.m 4964 2012-09-26 10:51:05Z guillaume $
+% $Id: spm_platform.m 7205 2017-11-09 11:29:59Z guillaume $
 
 
 %-Initialise
@@ -91,8 +91,7 @@ varargout = {PLATFORM.host};
 
 case 'drives'                                               %-Return drives
 %==========================================================================
-warning('Use spm_select(''ListDrives'') instead.');
-varargout = {PLATFORM.drives};
+error('Use spm_select(''ListDrives'') instead.');
 
 case 'tempdir'                                 %-Return temporary directory
 %==========================================================================
@@ -118,6 +117,10 @@ switch lower(varargin{2})
         warning(['Unknown font ',varargin{2},', using default'])
         varargout = {PLATFORM.font.helvetica};
 end
+
+case 'desktop'                                       %-Return desktop usage
+%==========================================================================
+varargout = {PLATFORM.desktop};
 
     otherwise                                       %-Unknown Action string
 %==========================================================================
@@ -145,7 +148,7 @@ if nargin<1
                     comp = 'GLNXA64';
                 case {'i586','i686'}
                     comp = 'GLNX86';
-                case {'armv6l'}
+                case {'armv6l','armv7l','armv8l'}
                     comp = 'ARM';
                 otherwise
                     error('%s is not supported.',comp);
@@ -221,15 +224,6 @@ end
 PLATFORM.host = strtok(PLATFORM.host,'.');
 
 
-%-Drives
-%--------------------------------------------------------------------------
-PLATFORM.drives = '';
-if strcmp(PLATFORM.filesys,'win')
-    driveLett = spm_select('ListDrives');
-    PLATFORM.drives = strrep(strcat(driveLett{:}),':','');
-end
-
-
 %-Fonts
 %--------------------------------------------------------------------------
 switch comp
@@ -248,4 +242,13 @@ switch comp
         PLATFORM.font.times     = 'Times New Roman';
         PLATFORM.font.courier   = 'Courier New';
         PLATFORM.font.symbol    = 'Symbol';
+end
+
+
+%-Desktop
+%--------------------------------------------------------------------------
+try
+    PLATFORM.desktop = usejava('desktop');
+catch
+    PLATFORM.desktop = false;
 end

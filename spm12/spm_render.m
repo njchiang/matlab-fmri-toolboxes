@@ -30,12 +30,12 @@ function varargout = spm_render(dat,brt,rendfile)
 % are 10mm behind the surface have half the intensity of ones at the
 % surface.
 %__________________________________________________________________________
-% Copyright (C) 1996-2014 Wellcome Trust Centre for Neuroimaging
+% Copyright (C) 1996-2015 Wellcome Trust Centre for Neuroimaging
 
 % John Ashburner
-% $Id: spm_render.m 6190 2014-09-23 16:10:50Z guillaume $
+% $Id: spm_render.m 6510 2015-07-31 14:49:33Z guillaume $
 
-SVNrev = '$Rev: 6190 $';
+SVNrev = '$Rev: 6510 $';
 
 global prevrend
 if ~isstruct(prevrend)
@@ -130,7 +130,7 @@ if isfield(rend,'vertices')
         col = hot(256);
     else
         col = eye(3);
-        if spm_input('Which colours?','!+1','b',{'RGB','Custom'},[0 1],1)
+        if spm_input('Which colours?','+1','b',{'RGB','Custom'},[0 1],1)
             for k = 1:num
                 col(k,:) = uisetcolor(col(k,:),sprintf('Colour of blob set %d',k));
             end
@@ -149,11 +149,11 @@ if nargin < 2  || isempty(prevrend.brt)
     end
 
     if isfinite(brt)
-        brt = spm_input('Brighten blobs',1,'none|slightly|more|lots',[1 0.75 0.5 0.25], 1);
+        brt = spm_input('Brighten blobs','+1','none|slightly|more|lots',[1 0.75 0.5 0.25], 1);
         col = eye(3);
         % ask for custom colours & get rgb values
         %------------------------------------------------------------------
-        if spm_input('Which colours?','!+1','b',{'RGB','Custom'},[0 1],1)
+        if spm_input('Which colours?','+1','b',{'RGB','Custom'},[0 1],1)
             for k = 1:num
                 col(k,:) = uisetcolor(col(k,:),sprintf('Colour of blob set %d',k));
             end
@@ -305,7 +305,7 @@ if ~isfinite(brt)
         X   = (rend{i}.data{1}-mnmn)/(mxmx-mnmn);
         msk = find(X);
         ren(msk) = X(msk)+(1+1.51/64);
-        rgb{i} = flipud(ind2rgb(round(ren*64),split));
+        rgb{i} = ind2rgb(round(ren*64),split);
         if ~spm('CmdLine')
             ax = axes('Parent',Fgraph,...
                 'units','normalized',...
@@ -350,13 +350,19 @@ else
                 'YTick',[],'XTick',[],...
                 'XDir','normal','YDir','normal');
         end
-        rgb{i} = flipud(rgb{i});
     end
 end
 
 spm('Pointer','Arrow');
 
-if nargout, varargout = { rgb }; end
+if nargout
+    for i=1:numel(rgb)
+        for ch=1:size(rgb{i},3)
+            rgb{i}(:,:,ch) = flipud(rgb{i}(:,:,ch));
+        end
+    end
+    varargout = { rgb };
+end
 
 
 %==========================================================================

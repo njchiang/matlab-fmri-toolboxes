@@ -1,8 +1,11 @@
-function [Q,J] = spm_dcm_delay(P,M)
+function [Q,J] = spm_dcm_delay(P,M,J,N)
 % returns the delay operator for flow and Jacobians of dynamical systems
 % FORMAT [Q,J] = spm_dcm_delay(P,M)
 % P   - model parameters
 % M   - model specification structure
+% J   - optional: system Jacobian
+% N   - optional: auto Taylor expansion [default: 2^6]
+%
 % Required fields:
 %   M.f - dx/dt    = f(x,u,P,M)            {function string or m-file}
 %   M.m - m inputs
@@ -11,7 +14,7 @@ function [Q,J] = spm_dcm_delay(P,M)
 %   M.u - (m x 1) = u    = expansion point: defaults to u = 0;
 %
 %
-% return the delay operator for Jacobians of dynamical systems where the
+% Returns the delay operator for Jacobians of dynamical systems where the
 % states are
 %
 % f     - dx(t)/dt  = f(x(t))
@@ -25,8 +28,23 @@ function [Q,J] = spm_dcm_delay(P,M)
 % Copyright (C) 2011 Wellcome Trust Centre for Neuroimaging
 
 % Karl Friston
-% $Id: spm_dcm_delay.m 5964 2014-04-20 09:48:58Z karl $
+% $Id: spm_dcm_delay.m 7149 2017-08-08 13:14:36Z karl $
 
+% order of Taylor approximation
+%--------------------------------------------------------------------------
+if nargin < 4, N = 2^8; end
+
+% Jacobian
+%==========================================================================
+if nargin < 3
+    
+    if isfield(M,'u'), u = spm_vec(M.u); else, u = sparse(M.m,1); end
+    
+    J = full(spm_diff(M.f,M.x,u,P,M,1));
+    
+else
+    J = full(J);
+end
 
 % evaluate delay matrix D from parameters
 %==========================================================================
@@ -34,10 +52,6 @@ function [Q,J] = spm_dcm_delay(P,M)
 % paramterised delays
 %--------------------------------------------------------------------------
 if isfield(P,'D')
-    
-    % number of states per sources
-    %----------------------------------------------------------------------
-    nx  = size(M.x,2);
     
     % get prior means (log-delays)
     %----------------------------------------------------------------------
@@ -56,10 +70,35 @@ if isfield(P,'D')
     De  = De - Di;
     De  = De*de/1000;
     Di  = Di*di/1000;
-    De  = kron(ones(nx,nx),De);
-    Di  = kron(ones(nx,nx) - speye(nx,nx),Di);
-    D   = Di + De;
     
+    if isnumeric(M.x)
+        
+        % number of states per sources
+        %------------------------------------------------------------------
+        nx  = size(M.x,2);
+        De  = kron(ones(nx,nx),De);
+        Di  = kron(ones(nx,nx) - speye(nx,nx),Di);
+        D   = Di + De;
+        
+    else
+        
+        % number of states per sources
+        %------------------------------------------------------------------
+        for i = 1:numel(M.x)
+            for j = 1:numel(M.x)
+                m = numel(M.x{i});
+                n = numel(M.x{j});
+                if i == j
+                    D{i,j} = Di(i,j)*(1 - speye(m,n));
+                else
+                    D{i,j} = De(i,j)*(1 - zeros(m,n));
+                end
+            end
+        end
+        D   = spm_cat(D);
+        
+    end
+   
 else
     
     % no delays
@@ -68,37 +107,31 @@ else
     
 end
 
-
-% create inline functions
+% suppress delays between voltage and current
 %--------------------------------------------------------------------------
-try
-    funx = fcnchk(M.f,'x','u','P','M');
-catch
-    M.f  = inline('sparse(0,1)','x','u','P','M');
-    M.n  = 0;
-    M.x  = sparse(0,0);
-    funx = fcnchk(M.f,'x','u','P','M');
+if isfield(M,'nodelay')
+    if M.nodelay == 1; D(J == 1) = 0;
+    elseif M.nodelay == 2; D((J == 1) | (J' == 1)) = 0;
+    end
 end
-
-% expansion point
-%--------------------------------------------------------------------------
-try, x = spm_vec(M.x); catch,  x = sparse(M.n,1); end
-try, u = spm_vec(M.u); catch,  u = sparse(M.m,1); end
-
 
 % Jacobian and delay operator
 %==========================================================================
 
-% derivatives
+% delay operator: first-order approximation if N = 0
+% Implement: dx(t)/dt = f(x(t - d)) = inv(1 + D.*dfdx)*f(x(t))
+%                     = Q*f = Q*J*x(t)
 %--------------------------------------------------------------------------
-J     = full(spm_diff(funx,x,u,P,M,1));
+if ~N
+    Q  = inv(speye(length(J)) + D.*J);
+    return
+end
 
-% delay operator:  estimated using a Robbins–Monro algorithm
+% delay operator: estimated using a Robbins–Monro algorithm
 %--------------------------------------------------------------------------
-N     = 256;
 D     = -D;
 QJ    = (eye(length(J)) - D.*J)\J;
-a     = 1/2;
+a     = 1/4;
 TOL   = norm(QJ,'inf')*1e-6;
 dn    = 1;
 Dn    = cell(N,1);
@@ -119,20 +152,17 @@ for i = 1:N
         
         % n-th order Taylor term
         %------------------------------------------------------------------
-        QJn = QJn*QJ/n;
-        dQ  = Dn{n}*QJn;
-        Q   = Q + dQ;
+        QJn           = QJn*QJ/n;
+        dQ            = Dn{n}*QJn;
+        dQ(isnan(dQ)) = 0;
+        Q             = Q + dQ;
         
         % break if convergence
         %------------------------------------------------------------------
         if norm(dQ,'inf') < TOL; break, end
         
     end
-    
-    % break if unstable
-    %----------------------------------------------------------------------
-    if any(any(isnan(Q))), Q = QJ; break, end
-    
+
     % Robbins–Monro update and break if convergence
     %----------------------------------------------------------------------
     QJ = QJ*(1 - a) + Q*a;
@@ -140,4 +170,4 @@ for i = 1:N
     if norm((QJ - Q),'inf') < TOL; break, end
     
 end
-Q      = Q*spm_inv(J);
+Q      = Q*spm_inv(J,exp(-16));

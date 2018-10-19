@@ -10,7 +10,7 @@ function d = sine_taper_scaled(n, k)
 
 % Copyright (C) 2006, Tom Holroyd
 %
-% This file is part of FieldTrip, see http://www.ru.nl/neuroimaging/fieldtrip
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
 % for the documentation and details.
 %
 %    FieldTrip is free software: you can redistribute it and/or modify
@@ -26,15 +26,15 @@ function d = sine_taper_scaled(n, k)
 %    You should have received a copy of the GNU General Public License
 %    along with FieldTrip. If not, see <http://www.gnu.org/licenses/>.
 %
-% $Id: sine_taper_scaled.m 7123 2012-12-06 21:21:38Z roboos $
+% $Id$
 
 if nargin < 2
-  error('usage: sine_taper_scaled(n, k)');
+  ft_error('usage: sine_taper_scaled(n, k)');
 end
 
 k = round(k * 2);
 if k <= 0 || k > n
-  error('sine_taper_scaled: k is %g, must be in (1:n)/2', k)
+  ft_error('sine_taper_scaled: k is %g, must be in (1:n)/2', k)
 end
 
 x = (1:k) .* (pi / (n + 1));

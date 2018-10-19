@@ -7,9 +7,10 @@ function [cfg, artifact] = ft_artifact_threshold(cfg, data)
 % Use as
 %   [cfg, artifact] = ft_artifact_threshold(cfg)
 % with the configuration options
-%   cfg.dataset
-%   cfg.headerfile
-%   cfg.datafile
+%   cfg.dataset     = string with the filename
+% or
+%   cfg.headerfile  = string with the filename
+%   cfg.datafile    = string with the filename
 %
 % Alternatively you can use it as
 %   [cfg, artifact] = ft_artifact_threshold(cfg, data)
@@ -50,7 +51,7 @@ function [cfg, artifact] = ft_artifact_threshold(cfg, data)
 
 % Copyright (C) 2003-2011, Robert Oostenveld, SMI, FCDC
 %
-% This file is part of FieldTrip, see http://www.ru.nl/neuroimaging/fieldtrip
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
 % for the documentation and details.
 %
 %    FieldTrip is free software: you can redistribute it and/or modify
@@ -66,9 +67,12 @@ function [cfg, artifact] = ft_artifact_threshold(cfg, data)
 %    You should have received a copy of the GNU General Public License
 %    along with FieldTrip. If not, see <http://www.gnu.org/licenses/>.
 %
-% $Id: ft_artifact_threshold.m 9520 2014-05-14 09:33:28Z roboos $
+% $Id$
 
-revision = '$Id: ft_artifact_threshold.m 9520 2014-05-14 09:33:28Z roboos $';
+% these are used by the ft_preamble/ft_postamble function and scripts
+ft_revision = '$Id$';
+ft_nargin   = nargin;
+ft_nargout  = nargout;
 
 % do the general setup of the function
 ft_defaults
@@ -76,8 +80,8 @@ ft_preamble init
 ft_preamble provenance
 ft_preamble loadvar data
 
-% the abort variable is set to true or false in ft_preamble_init
-if abort
+% the ft_abort variable is set to true or false in ft_preamble_init
+if ft_abort
   return
 end
 
@@ -86,10 +90,10 @@ cfg = ft_checkconfig(cfg, 'renamed',    {'datatype', 'continuous'});
 cfg = ft_checkconfig(cfg, 'renamedval', {'continuous', 'continuous', 'yes'});
 
 % set default rejection parameters for clip artifacts if necessary
-if ~isfield(cfg, 'artfctdef'),          cfg.artfctdef            = [];  end
-if ~isfield(cfg.artfctdef,'threshold'), cfg.artfctdef.threshold  = [];  end
-if ~isfield(cfg, 'headerformat'),       cfg.headerformat         = [];  end
-if ~isfield(cfg, 'dataformat'),         cfg.dataformat           = [];  end
+if ~isfield(cfg, 'artfctdef'),           cfg.artfctdef            = [];  end
+if ~isfield(cfg.artfctdef, 'threshold'), cfg.artfctdef.threshold  = [];  end
+if ~isfield(cfg, 'headerformat'),        cfg.headerformat         = [];  end
+if ~isfield(cfg, 'dataformat'),          cfg.dataformat           = [];  end
 
 % copy the specific configuration for this function out of the master cfg
 artfctdef = cfg.artfctdef.threshold;
@@ -115,18 +119,19 @@ if ~isfield(artfctdef, 'range'),    artfctdef.range = inf;           end
 if ~isfield(artfctdef, 'min'),      artfctdef.min =  -inf;           end
 if ~isfield(artfctdef, 'max'),      artfctdef.max =   inf;           end
 
+% the data is either passed into the function by the user or read from file with cfg.inputfile
+hasdata = exist('data', 'var');
+
 % read the header, or get it from the input data
-if nargin > 1
-  % data given as input
-  isfetch = true;
-  cfg = ft_checkconfig(cfg, 'forbidden', {'dataset', 'headerfile', 'datafile'});
-  hdr = ft_fetch_header(data);
-else
-  % only cfg given
-  isfetch = false;
-  cfg = ft_checkconfig(cfg, 'dataset2files', {'yes'});
+if ~hasdata
+  cfg = ft_checkconfig(cfg, 'dataset2files', 'yes');
   cfg = ft_checkconfig(cfg, 'required', {'headerfile', 'datafile'});
   hdr = ft_read_header(cfg.headerfile, 'headerformat', cfg.headerformat);
+else
+  % data given as input
+  data = ft_checkdata(data, 'hassampleinfo', 'yes');
+  cfg = ft_checkconfig(cfg, 'forbidden', {'dataset', 'headerfile', 'datafile'});
+  hdr = ft_fetch_header(data);
 end
 
 % set default cfg.continuous
@@ -138,6 +143,12 @@ if ~isfield(cfg, 'continuous')
   end
 end
 
+if ~isfield(cfg, 'trl')
+  % get it from the data itself
+  cfg.trl = data.trialinfo;
+  cfg.trl(:,3) = 0;
+end
+
 % get the remaining settings
 numtrl      = size(cfg.trl,1);
 channel     = ft_channelselection(artfctdef.channel, hdr.label);
@@ -145,7 +156,7 @@ channelindx = match_str(hdr.label,channel);
 artifact    = [];
 
 for trlop = 1:numtrl
-  if isfetch
+  if hasdata
     dat = ft_fetch_data(data,        'header', hdr, 'begsample', cfg.trl(trlop,1), 'endsample', cfg.trl(trlop,2), 'chanindx', channelindx, 'checkboundary', strcmp(cfg.continuous, 'no'));
   else
     dat = ft_read_data(cfg.datafile, 'header', hdr, 'begsample', cfg.trl(trlop,1), 'endsample', cfg.trl(trlop,2), 'chanindx', channelindx, 'checkboundary', strcmp(cfg.continuous, 'no'), 'dataformat', cfg.dataformat);
@@ -168,20 +179,20 @@ for trlop = 1:numtrl
   
   % test the min, max and range against the specified thresholds
   if ~isempty(artfctdef.min) && minval<artfctdef.min
-    fprintf('threshold artifact scanning: trial %d from %d exceeds min-threshold\n', trlop, numtrl);
+    ft_info('threshold artifact scanning: trial %d from %d exceeds min-threshold\n', trlop, numtrl);
     artifact(end+1,1:2) = cfg.trl(trlop,1:2);
   elseif ~isempty(artfctdef.max) && maxval>artfctdef.max
-    fprintf('threshold artifact scanning: trial %d from %d exceeds max-threshold\n', trlop, numtrl);
+    ft_info('threshold artifact scanning: trial %d from %d exceeds max-threshold\n', trlop, numtrl);
     artifact(end+1,1:2) = cfg.trl(trlop,1:2);
   elseif ~isempty(artfctdef.range) && worstChanRange>artfctdef.range
-    fprintf('threshold artifact scanning: trial %d from %d exceeds range-threshold; max-range channel = %s\n', trlop, numtrl, hdr.label{channelindx(worstChanInd)});
+    ft_info('threshold artifact scanning: trial %d from %d exceeds range-threshold; max-range channel = %s\n', trlop, numtrl, hdr.label{channelindx(worstChanInd)});
     artifact(end+1,1:2) = cfg.trl(trlop,1:2);
   else
-    fprintf('threshold artifact scanning: trial %d from %d is ok\n', trlop, numtrl);
+    ft_info('threshold artifact scanning: trial %d from %d is ok\n', trlop, numtrl);
   end
 end
 
-fprintf('detected %d artifacts\n', size(artifact,1));
+ft_info('detected %d artifacts\n', size(artifact,1));
 
 % remember the details that were used here
 cfg.artfctdef.threshold          = artfctdef;
@@ -192,4 +203,3 @@ cfg.artfctdef.threshold.artifact = artifact;        % detected artifacts
 % do the general cleanup and bookkeeping at the end of the function
 ft_postamble provenance
 ft_postamble previous data
-

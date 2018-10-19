@@ -14,7 +14,7 @@ function out = spm_shoot_template(job)
 % Copyright (C) Wellcome Trust Centre for Neuroimaging (2009)
 
 % John Ashburner
-% $Id: spm_shoot_template.m 5782 2013-12-05 16:11:14Z john $
+% $Id: spm_shoot_template.m 6798 2016-05-20 11:53:33Z john $
 
 %_______________________________________________________________________
 d       = spm_shoot_defaults;
@@ -154,8 +154,8 @@ NG.dat.scl_inter = 0;
 NG.mat0          = NG.mat;
 vx               = sqrt(sum(NG.mat(1:3,1:3).^2));
 
-if ~isempty(sparam) || smits==0,
-    g0 = spm_shoot_blur(t,[vx, prod(vx)*[sparam(1:2) sched(1)*sparam(3)]],smits);
+if ~isempty(sparam) && smits~=0,
+    g0 = spm_shoot_blur(t,[vx, prod(vx)*[sparam(1:2) sched(1)*sparam(3)]],smits); % FIX THIS
     for j=1:n1+1,
         g{j} = max(g0(:,:,:,j),1e-4);
     end
@@ -183,7 +183,7 @@ for it=1:nits,
 
     % More regularisation in the early iterations, as well as a
     % a less accurate approximation in the integration.
-    prm      = [vx, rparam*sched(it+1)*prod(vx)];
+    prm      = [vx, rparam*sched(it+1)*prod(vx)]; % FIX THIS
     int_args = [eul_its(it), cyc_its];
     drawnow
 
@@ -237,7 +237,9 @@ for it=1:nits,
         if ok(i)
             % Load velocity, mean adjust and re-save
             u  = squeeze(single(NU(i).dat(:,:,:,:,:)));
-            u  = u - su; % Subtract mean
+            if isempty(sparam) || smits==0
+                u  = u - su; % Subtract mean (unless template is smoothed)
+            end
             NU(i).dat(:,:,:,:,:) = reshape(u,[dm 1 3]);
 
             % Generate inverse deformation and save
@@ -285,9 +287,9 @@ for it=1:nits,
     %%%%%%%%%%%%%%%
 
     % Re-generate template data from sufficient statistics
-    if ~isempty(sparam) || smits==0,
+    if ~isempty(sparam) && smits~=0,
         g0 = reconv(g,bs_args);
-        g0 = spm_shoot_blur(t,[vx, prod(vx)*[sparam(1:2) sched(it+1)*sparam(3)]],smits,g0);
+        g0 = spm_shoot_blur(t,[vx, prod(vx)*[sparam(1:2) sched(it+1)*sparam(3)]],smits,g0); % FIX THIS
         g  = cell(n1+1,1);
         for j=1:n1+1,
             g{j} = max(g0(:,:,:,j),1e-4);

@@ -4,7 +4,7 @@ function reduce = spm_cfg_eeg_reduce
 % Copyright (C) 2010-2012 Wellcome Trust Centre for Neuroimaging
 
 % Vladimir Litvak
-% $Id: spm_cfg_eeg_reduce.m 5675 2013-10-09 14:27:17Z vladimir $
+% $Id: spm_cfg_eeg_reduce.m 6929 2016-11-14 13:07:31Z guillaume $
 
 
 %--------------------------------------------------------------------------
@@ -14,8 +14,8 @@ D        = cfg_files;
 D.tag    = 'D';
 D.name   = 'File Name';
 D.filter = 'mat';
-D.num    = [1 1];
-D.help   = {'Select the M/EEG mat file.'};
+D.num    = [1 Inf];
+D.help   = {'Select the M/EEG mat file(s).'};
 
 
 %--------------------------------------------------------------------------
@@ -23,13 +23,23 @@ D.help   = {'Select the M/EEG mat file.'};
 %--------------------------------------------------------------------------
 method      = cfg_choice;
 method.tag  = 'method';
-method.name = 'Reduction method ';
+method.name = 'Reduction method';
+method.help = {'Reduction method'};
 
 specest_funs = spm_select('List',spm('dir'),'^spm_eeg_reduce_.*\.m$');
 specest_funs = cellstr(specest_funs);
+method.values = cell(1,numel(specest_funs));
 for i = 1:numel(specest_funs)
     method.values{i} = feval(spm_file(specest_funs{i},'basename'));
 end
+
+keeporig = cfg_menu;
+keeporig.tag = 'keeporig';
+keeporig.name = 'Keep original channels';
+keeporig.labels = {'Yes', 'No'};
+keeporig.values = {true, false};
+keeporig.val = {false};
+keeporig.help = {'Specify whether you want to keep the original unreduced channels'};
 
 keepothers = cfg_menu;
 keepothers.tag = 'keepothers';
@@ -53,7 +63,7 @@ prefix.val     = {'R'};
 reduce = cfg_exbranch;
 reduce.tag = 'reduce';
 reduce.name = 'Data reduction';
-reduce.val = {D, spm_cfg_eeg_channel_selector, method, keepothers, prefix};
+reduce.val = {D, spm_cfg_eeg_channel_selector, method, keeporig, keepothers, prefix};
 reduce.help = {'Perform data reduction.'};
 reduce.prog = @eeg_reduce;
 reduce.vout = @vout_eeg_reduce;
@@ -73,6 +83,7 @@ S.channels  = spm_cfg_eeg_channel_selector(job.channels);
 S.method    = cell2mat(fieldnames(job.method));
 S.settings  = job.method.(S.method);
 S.keepothers = job.keepothers;
+S.keeporig  = job.keeporig;
 
 D = spm_eeg_reduce(S);
 

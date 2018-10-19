@@ -27,13 +27,13 @@ function [xVi, mask] = spm_est_non_sphericity(SPM)
 % array of non-sphericity components (xVi.Vi), providing a high precise
 % estimate of the non-sphericity matrix (xVi.V).
 %__________________________________________________________________________
-% Copyright (C) 1994-2012 Wellcome Trust Centre for Neuroimaging
+% Copyright (C) 1994-2016 Wellcome Trust Centre for Neuroimaging
 
 % Karl Friston & Guillaume Flandin
-% $Id: spm_est_non_sphericity.m 6015 2014-05-23 15:46:19Z guillaume $
+% $Id: spm_est_non_sphericity.m 6913 2016-10-31 10:12:27Z guillaume $
 
 
-SVNid = '$Rev: 6015 $';
+SVNid = '$Rev: 6913 $';
 
 %-Say hello
 %--------------------------------------------------------------------------
@@ -43,6 +43,7 @@ spm('FnBanner',mfilename,SVNid);
 %-Get data, design, mask and variance components details
 %--------------------------------------------------------------------------
 VY           = SPM.xY.VY;
+M            = VY(1).mat;
 DIM          = VY(1).dim;
 YNaNrep      = spm_type(VY(1).dt(1),'nanrep');
 
@@ -102,18 +103,29 @@ UF           = spm_invFcdf(1 - UFp,[trMV,trRV]);
 %==========================================================================
 mask = true(DIM);
 for i = 1:numel(xM.VM)
-    C = spm_bsplinc(xM.VM(i), [0 0 0 0 0 0]');
-    v = true(DIM);
-    [x1,x2] = ndgrid(1:DIM(1),1:DIM(2));
-    for x3 = 1:DIM(3)
-        M2 = inv(VY(1).mat\xM.VM(i).mat);
-        y1 = M2(1,1)*x1+M2(1,2)*x2+(M2(1,3)*x3+M2(1,4));
-        y2 = M2(2,1)*x1+M2(2,2)*x2+(M2(2,3)*x3+M2(2,4));
-        y3 = M2(3,1)*x1+M2(3,2)*x2+(M2(3,3)*x3+M2(3,4));
-        v(:,:,x3) = spm_bsplins(C, y1,y2,y3, [0 0 0 0 0 0]') > 0;
+    if ~(isfield(SPM,'xVol') && isfield(SPM.xVol,'G'))
+        %-Assume it fits entirely in memory
+        C = spm_bsplinc(xM.VM(i), [0 0 0 0 0 0]');
+        v = true(DIM);
+        [x1,x2] = ndgrid(1:DIM(1),1:DIM(2));
+        for x3 = 1:DIM(3)
+            M2  = inv(M\xM.VM(i).mat);
+            y1 = M2(1,1)*x1+M2(1,2)*x2+(M2(1,3)*x3+M2(1,4));
+            y2 = M2(2,1)*x1+M2(2,2)*x2+(M2(2,3)*x3+M2(2,4));
+            y3 = M2(3,1)*x1+M2(3,2)*x2+(M2(3,3)*x3+M2(3,4));
+            v(:,:,x3) = spm_bsplins(C, y1,y2,y3, [0 0 0 0 0 0]') > 0;
+        end
+        mask = mask & v;
+        clear C v x1 x2 x3 M2 y1 y2 y3
+    else
+        if spm_mesh_detect(xM.VM(i))
+            v = xM.VM(i).private.cdata() > 0;
+        else
+            v = spm_mesh_project(gifti(SPM.xVol.G), xM.VM(i)) > 0;
+        end
+        mask = mask & v(:);
+        clear v
     end
-    mask = mask & v;
-    clear C v x1 x2 x3 M2 y1 y2 y3
 end
 
 Cy        = 0;                                  %-<Y*Y'> spatially whitened

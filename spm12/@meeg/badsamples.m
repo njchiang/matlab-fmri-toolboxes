@@ -5,7 +5,7 @@ function res = badsamples(this, chanind, sampind, trialind)
 % Copyright (C) 2013 Wellcome Trust Centre for Neuroimaging
 
 % Vladimir Litvak
-% $Id: badsamples.m 5610 2013-08-14 10:28:57Z vladimir $
+% $Id: badsamples.m 7199 2017-11-01 16:42:12Z vladimir $
 
 if ischar(chanind) && isequal(chanind, ':')
     chanind = 1:nchannels(this);
@@ -19,9 +19,14 @@ if ischar(trialind) && isequal(trialind, ':')
     trialind = 1:ntrials(this);
 end
 
+if ~isequal(type(this), 'continuous') && ~any(trialonset(this))
+    error('Trial onset information is not available. Cannot map artefact events to samples.');
+end
+
 res = false(length(chanind), nsamples(this), length(trialind));
 for i = 1:length(trialind)
-    ev = events(this, trialind(i), 'samples');
+    
+    ev = events(this, trialind(i));
     if iscell(ev)
         ev = ev{1};
     end
@@ -29,11 +34,11 @@ for i = 1:length(trialind)
     if ~isempty(ev)
         ev = ev(intersect(strmatch('artefact', {ev.type}),...
             find(cellfun(@ischar, {ev.value}))));
-        for j = 1:length(chanind)
-            cev = ev(strmatch(char(chanlabels(this, chanind(j))), {ev.value}));
-            for k = 1:numel(cev)
-                res(j, cev(k).sample+(0:(cev(k).duration-1)), i) = true;
-            end
+        for k = 1:numel(ev)
+            [dum, chan] = intersect(chanind, selectchannels(this, ev(k).value));
+            samples     = find((trialonset(this, trialind(i))+time(this))>=ev(k).time & ...
+                (trialonset(this, trialind(i))+time(this))<=(ev(k).time+ev(k).duration));
+            res(chan, samples, i) = true;
         end
     end
 end

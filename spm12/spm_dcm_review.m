@@ -16,10 +16,10 @@ function spm_dcm_review(DCM,action)
 %          'estimates of precisions'
 %          ['   hidden states: ' DCM.Y.name{i}]
 %__________________________________________________________________________
-% Copyright (C) 2008-2014 Wellcome Trust Centre for Neuroimaging
+% Copyright (C) 2008-2015 Wellcome Trust Centre for Neuroimaging
 
 % Karl Friston
-% $Id: spm_dcm_review.m 6175 2014-09-15 19:57:22Z guillaume $
+% $Id: spm_dcm_review.m 6931 2016-11-16 12:09:58Z karl $
 
 
 %-Get DCM structure
@@ -32,7 +32,7 @@ if ~isstruct(DCM)
     load(DCM);
 end
 
-%-Call spm_dcm_fmri_results for DCM of CSD
+%-Call spm_dcm_fmri_csd_results for DCM of CSD
 %--------------------------------------------------------------------------
 try
     analysis = DCM.options.analysis;
@@ -40,8 +40,8 @@ catch
     analysis = '';
 end
 if strcmp(analysis,'CSD')
-	spm_dcm_fmri_results(DCM);
-	return
+    spm_dcm_fmri_csd_results(DCM);
+    return
 end
 
 %-Get model specification structure (see spm_nlsi)
@@ -401,36 +401,41 @@ switch action
 
         % input effects
         %------------------------------------------------------------------
-        x     = (1:DCM.M.N)*DCM.M.dt;
+        try
+            tn = (1:DCM.M.N)*DCM.M.dt;
+            th = (1:DCM.M.N)*DCM.M.dt;
+        catch
+            tn = (1:64)*8/1000;
+            th = (1:64)*1/2;
+        end
         for i = 1:m
 
             % input effects - neuronal
             %--------------------------------------------------------------
             y = DCM.K1(:,:,i);
             subplot(m,2,2*(i - 1) + 1)
-            plot(x,y)
-            set(gca,'XLim',[0 16])
+            plot(tn,y)
+            set(gca,'XLim',[0 min(max(tn),8)])
             axis square
             title(['neuronal responses to ' DCM.U.name{i}],'FontSize',12)
             xlabel('time {seconds}')
             for j = 1:l
-                text(x(j),y(j,j),DCM.Y.name{j},...
+                text(tn(j),y(j,j),DCM.Y.name{j},...
                     'FontWeight','bold','FontSize',fs,...
                     'HorizontalAlignment','Center')
             end
 
-            % input effects - hemodynamic
+            % input effects - haemodynamic
             %--------------------------------------------------------------
-            y = DCM.K1(:,:,i);
             k = DCM.H1(:,:,i);
             subplot(m,2,2*(i - 1) + 2)
-            plot(x,k,x,y,':')
-            set(gca,'XLim',[0 16])
+            plot(th,k)
+            set(gca,'XLim',[0 min(max(th),24)])
             axis square
             title('hemodynamic responses','FontSize',12)
             xlabel('time {seconds}')
             for j = 1:l
-                text(x(j),k(j,j),DCM.Y.name{j},...
+                text(th(j),k(j,j),DCM.Y.name{j},...
                     'FontWeight','bold','FontSize',fs,...
                     'HorizontalAlignment','Center')
             end

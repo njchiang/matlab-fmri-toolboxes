@@ -10,7 +10,7 @@ function str = spm_file(str,varargin)
 % str        - character array, or cell array of strings
 % opt_key    - string of targeted item - one among:
 %              {'path', 'basename', 'ext', 'filename', 'number', 'prefix',
-%              'suffix','link'}
+%              'suffix','link','local'}
 % opt_val    - string of new value for feature
 %__________________________________________________________________________
 %
@@ -51,10 +51,10 @@ function str = spm_file(str,varargin)
 %
 % See also: spm_fileparts, spm_select, spm_file_ext, spm_existfile
 %__________________________________________________________________________
-% Copyright (C) 2011-2014 Wellcome Trust Centre for Neuroimaging
+% Copyright (C) 2011-2017 Wellcome Trust Centre for Neuroimaging
 
 % Guillaume Flandin
-% $Id: spm_file.m 5969 2014-05-01 14:37:22Z guillaume $
+% $Id: spm_file.m 7110 2017-06-15 11:45:05Z guillaume $
 
 
 needchar = ischar(str);
@@ -132,17 +132,17 @@ while ~isempty(options)
         [pth,nam,ext,num] = spm_fileparts(deblank(str{n}));
         switch lower(options{1})
             case 'path'
-                pth = options{2};
+                pth = char(options{2});
             case 'basename'
-                nam = options{2};
+                nam = char(options{2});
             case 'ext'
-                ext = options{2};
+                ext = char(options{2});
                 if ~isempty(ext) && ext(1) ~= '.'
                     ext = ['.' ext];
                 end
                 num = '';
             case 'filename'
-                nam = options{2};
+                nam = char(options{2});
                 ext = '';
             case 'number'
                 if isnumeric(options{2})
@@ -153,21 +153,43 @@ while ~isempty(options)
                 end
                 num = options{2};
             case 'prefix'
-                nam = [options{2} nam];
+                nam = [char(options{2}) nam];
             case 'suffix'
-                nam = [nam options{2}];
+                nam = [nam char(options{2})];
             case 'link'
-                if desktop('-inuse')
+                if spm_platform('desktop')
                     cmd = ['<a href="matlab:' options{2} ';">%s</a>'];
                     cmd = strrep(cmd,'\','\\');
                     p   = numel(setxor(strfind(cmd,'%'),strfind(cmd,'%%')));
                     m   = repmat(str(n),1,p);
                     str{n} = sprintf(cmd,m{:});
                 end
+            case 'local'
+                protocol = str{n}(1:find(str{n}==':',1)-1);
+                if ismember(protocol,{'file','http','https','ftp'})
+                    switch lower(options{2})
+                        case 'temp'
+                            [str{n}, sts] = urlwrite(str{n},tempname);
+                        case 'content'
+                            [str{n}, sts] = urlread(str{n});
+                        otherwise
+                            if exist(options{2},'dir') == 7
+                                options{2} = fullfile(options{2},[nam ext]);
+                            end
+                            [str{n}, sts] = urlwrite(str{n},options{2});
+                    end
+                    if ~sts
+                        error('An error occured while accessing %s.',str{n});
+                    end
+                else
+                    if strcmpi(options{2},'content')
+                        str{n} = fileread(str{n});
+                    end
+                end
             otherwise
                 warning('Unknown item ''%s'': ignored.',lower(options{1}));
         end
-        if ~strcmpi(options{1},'link')
+        if ~any(strcmpi(options{1},{'link','local'}))
             str{n} = fullfile(pth,[nam ext num]);
         end
     end

@@ -179,10 +179,10 @@ function [SPM,xSPM] = spm_getSPM(varargin)
 % see spm_results_ui.m for further details of the SPM results section.
 % see also spm_contrasts.m
 %__________________________________________________________________________
-% Copyright (C) 1999-2014 Wellcome Trust Centre for Neuroimaging
+% Copyright (C) 1999-2017 Wellcome Trust Centre for Neuroimaging
 
 % Andrew Holmes, Karl Friston & Jean-Baptiste Poline
-% $Id: spm_getSPM.m 6200 2014-09-25 17:33:13Z guillaume $
+% $Id: spm_getSPM.m 7092 2017-06-05 15:08:49Z guillaume $
 
 
 %-GUI setup
@@ -225,17 +225,10 @@ cd(SPM.swd);
 try
     SPM.xVol.S;
 catch
-    
-    %-Check the model has been estimated
-    %----------------------------------------------------------------------
-    str = { 'This model has not been estimated.';...
-            'Would you like to estimate it now?'};
-    if spm_input(str,1,'bd','yes|no',[1,0],1)
-        SPM = spm_spm(SPM);
-    else
-        SPM = []; xSPM = [];
-        return
-    end
+    spm('alert*',{'This model has not been estimated.','',...
+        fullfile(swd,'SPM.mat')}, mfilename, [], ~spm('CmdLine'));
+    SPM = []; xSPM = [];
+    return
 end
 
 xX   = SPM.xX;                      %-Design definition structure
@@ -410,7 +403,8 @@ elseif Mask == 2
     try
         Im = xSPM.Im;
     catch
-        Im = cellstr(spm_select([1 Inf],'image','Select mask image(s)'));
+        [Im, sts] = spm_select([1 Inf],{'image','mesh'},'Select mask image(s)');
+        if ~sts, Im = []; else Im = cellstr(Im); end
     end
     
     %-Inclusive or exclusive masking
@@ -524,9 +518,9 @@ if isfield(SPM,'PPM')
             
             % For VB - set default effect size 
             %--------------------------------------------------------------
-            try
+            if exist('xSPM','var') && isfield(xSPM,'gamma') && ~isempty(xSPM.gamma)
                 xCon(Ic).eidf = xSPM.gamma;
-            catch
+            else
                 Gamma = 0.1;
                 xCon(Ic).eidf = spm_input(str,'+1','e',sprintf('%0.2f',Gamma));
             end
@@ -543,10 +537,14 @@ if isfield(SPM,'PPM')
             end
             % If Bayesian then get effect size threshold (Gamma) stored in xCon(Ic).eidf
             % The default is one conditional s.d. of the contrast
-            %----------------------------------------------------------
+            %--------------------------------------------------------------
             if strcmp(xCon(Ic).STAT,'P')
-                Gamma         = sqrt(xCon(Ic).c'*SPM.PPM.Cb*xCon(Ic).c);
-                xCon(Ic).eidf = spm_input(str,'+1','e',sprintf('%0.2f',Gamma));
+                if exist('xSPM','var') && isfield(xSPM,'gamma') && ~isempty(xSPM.gamma)
+                   xCon(Ic).eidf = xSPM.gamma;
+                else 
+                    Gamma         = full(sqrt(xCon(Ic).c'*SPM.PPM.Cb*xCon(Ic).c));
+                    xCon(Ic).eidf = spm_input(str,'+1','e',sprintf('%0.2f',Gamma));
+                end
             end
         end
     else
@@ -600,9 +598,9 @@ end
 
 switch STAT
     case 'T'
-        STATstr = sprintf('%c%s_{%.0f}','T',str,df(2));
+        STATstr = sprintf('%s%s_{%.0f}','T',str,df(2));
     case 'F'
-        STATstr = sprintf('%c%s_{%.0f,%.0f}','F',str,df(1),df(2));
+        STATstr = sprintf('%s%s_{%.0f,%.0f}','F',str,df(1),df(2));
     case 'P'
         if strcmp(SPM.PPM.xCon(Ic).PSTAT,'T')
             STATstr = sprintf('%s^{%0.2f}','PPM',df(1));
@@ -713,7 +711,7 @@ if STAT ~= 'P'
             
         case 'FDR' % False discovery rate
             %--------------------------------------------------------------
-            if topoFDR,
+            if topoFDR
                 fprintf('\n');                                          %-#
                 error('Change defaults.stats.topoFDR to use voxel FDR');
             end
@@ -750,16 +748,20 @@ if STAT ~= 'P'
     %-Compute p-values for topological and voxel-wise FDR (all search voxels)
     %----------------------------------------------------------------------
     if ~topoFDR
+        %-Voxel-wise FDR
+        %------------------------------------------------------------------
         fprintf('%s%30s',repmat(sprintf('\b'),1,30),'...for voxelFDR')  %-#
         Ps = spm_z2p(Zum,df,STAT,n);
-    end
-    
-    %-Peak FDR
-    %----------------------------------------------------------------------
-    if ~spm_mesh_detect(xCon(Ic(1)).Vspm)
-        [up,Pp] = spm_uc_peakFDR(0.05,df,STAT,R,n,Zum,XYZum,u);
+        up = spm_uc_FDR(0.05,df,STAT,n,sort(Ps(:)));
+        Pp = [];
     else
-        [up,Pp] = spm_uc_peakFDR(0.05,df,STAT,R,n,Zum,XYZum,u,G);
+        %-Peak FDR
+        %------------------------------------------------------------------
+        if ~spm_mesh_detect(xCon(Ic(1)).Vspm)
+            [up,Pp] = spm_uc_peakFDR(0.05,df,STAT,R,n,Zum,XYZum,u);
+        else
+            [up,Pp] = spm_uc_peakFDR(0.05,df,STAT,R,n,Zum,XYZum,u,G);
+        end
     end
     
     %-Cluster FDR
@@ -775,6 +777,11 @@ if STAT ~= 'P'
     else
         uc  = NaN;
         ue  = NaN;
+        Pc  = [];
+    end
+    
+    if ~topoFDR
+        uc  = NaN;
         Pc  = [];
     end
     
@@ -856,8 +863,11 @@ if ~isempty(XYZ)
     end
     
 else
-    
-    k = 0;
+    try
+        k = xSPM.k;
+    catch
+        k = 0;
+    end
     
 end % (if ~isempty(XYZ))
 

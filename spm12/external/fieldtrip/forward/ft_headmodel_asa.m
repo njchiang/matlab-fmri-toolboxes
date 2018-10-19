@@ -1,4 +1,4 @@
-function vol = ft_headmodel_asa(filename)
+function headmodel = ft_headmodel_asa(filename)
 
 % FT_HEADMODEL_ASA reads a volume conduction model from an ASA *.vol
 % file
@@ -11,13 +11,13 @@ function vol = ft_headmodel_asa(filename)
 % MRI and the computation of the BEM system are both handled by ASA.
 % 
 % Use as
-%   vol = ft_headmodel_asa(filename)
+%   headmodel = ft_headmodel_asa(filename)
 %
 % See also FT_PREPARE_VOL_SENS, FT_COMPUTE_LEADFIELD
 
 % Copyright (C) 2012, Donders Centre for Cognitive Neuroimaging, Nijmegen, NL
 %
-% This file is part of FieldTrip, see http://www.ru.nl/neuroimaging/fieldtrip
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
 % for the documentation and details.
 %
 %    FieldTrip is free software: you can redistribute it and/or modify
@@ -33,9 +33,9 @@ function vol = ft_headmodel_asa(filename)
 %    You should have received a copy of the GNU General Public License
 %    along with FieldTrip. If not, see <http://www.gnu.org/licenses/>.
 %
-% $Id: ft_headmodel_asa.m 7123 2012-12-06 21:21:38Z roboos $
+% $Id$
 
 % read the headmodel from file
 % this works for ASA version 2.x, perhaps also for ASA 3.x 
-vol = ft_read_vol(filename);
+headmodel = ft_read_vol(filename);
 

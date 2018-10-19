@@ -8,7 +8,7 @@ function [nb] = find_triangle_neighbours(pnt, tri)
 
 % Copyright (C) 2003, Robert Oostenveld
 %
-% This file is part of FieldTrip, see http://www.ru.nl/neuroimaging/fieldtrip
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
 % for the documentation and details.
 %
 %    FieldTrip is free software: you can redistribute it and/or modify
@@ -24,7 +24,7 @@ function [nb] = find_triangle_neighbours(pnt, tri)
 %    You should have received a copy of the GNU General Public License
 %    along with FieldTrip. If not, see <http://www.gnu.org/licenses/>.
 %
-% $Id: find_triangle_neighbours.m 8960 2013-12-05 07:43:01Z roboos $
+% $Id$
 
 npnt = size(pnt,1);
 ntri = size(tri,1);
@@ -63,7 +63,7 @@ for i=1:ntri
 
   % ensure that each neighbour is assigned to the proper edge
   if length(sel)>3
-    error(sprintf('more than three neighbours found for triangle %d', i));
+    ft_error('more than three neighbours found for triangle %d', i);
   else
     for j=1:length(sel)
       if isempty(setdiff(intersect(tri(i,:), tri(sel(j),:)), tri(i,[1 2])))

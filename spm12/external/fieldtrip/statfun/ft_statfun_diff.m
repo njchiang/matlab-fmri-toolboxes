@@ -1,4 +1,4 @@
-function [s] = ft_statfun_diff(cfg, dat, design)
+function [s, cfg] = ft_statfun_diff(cfg, dat, design)
 
 % FT_STATFUN_DIFF computes the difference of the mean in two conditions.
 % Although it can be used for statistical testing, it is not very
@@ -11,11 +11,11 @@ function [s] = ft_statfun_diff(cfg, dat, design)
 % permutation test, without having to worry about the representation
 % of the data.
 %
-% See also FT_STATFUN_MEAN for an other example function
+% See also FT_STATFUN_MEAN for another example function
 
 % Copyright (C) 2006, Robert Oostenveld 
 %
-% This file is part of FieldTrip, see http://www.ru.nl/neuroimaging/fieldtrip
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
 % for the documentation and details.
 %
 %    FieldTrip is free software: you can redistribute it and/or modify
@@ -31,7 +31,7 @@ function [s] = ft_statfun_diff(cfg, dat, design)
 %    You should have received a copy of the GNU General Public License
 %    along with FieldTrip. If not, see <http://www.gnu.org/licenses/>.
 %
-% $Id: ft_statfun_diff.m 9560 2014-05-20 20:38:42Z dieloz $
+% $Id$
 
 selA = find(design(cfg.ivar,:)==1); % selecton condition 1 or A
 selB = find(design(cfg.ivar,:)==2); % selecton condition 2 or B
@@ -39,16 +39,14 @@ dfA  = length(selA);
 dfB  = length(selB);
 if (dfA+dfB)<size(design, 2)
   % there are apparently replications that belong neither to condition 1, nor to condition 2
-  warning('inappropriate design, it should only contain 1''s and 2''s');
+  ft_warning('inappropriate design, it should only contain 1''s and 2''s');
 end
 % compute the averages and the difference
-avgA = mean(dat(:,selA), 2);
-avgB = mean(dat(:,selB), 2);
-s = avgA - avgB;
+avgA = nanmean(dat(:,selA), 2);
+avgB = nanmean(dat(:,selB), 2);
+s.stat = avgA - avgB;
 
 % the stat field is used in STATISTICS_MONTECARLO to make the
 % randomization distribution, but you can also return other fields
 % which will be passed on to the command line in the end.
-
-s.stat = s;
 

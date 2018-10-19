@@ -17,7 +17,7 @@ function [pnt, tri] = mesh_spherify(pnt, tri, varargin)
 %   smooth = number (default = 20)
 
 % Copyright (C) 2008, Robert Oostenveld
-% $Id: mesh_spherify.m 8776 2013-11-14 09:04:48Z roboos $
+% $Id$
 
 % give some graphical feedback for debugging
 fb = false;
@@ -175,7 +175,7 @@ if length(varargin)==1 && iscell(varargin{1})
 end
 
 if mod(length(varargin),2)
-  error('optional input arguments should come in key-value pairs, i.e. there should be an even number');
+  ft_error('optional input arguments should come in key-value pairs, i.e. there should be an even number');
 end
 
 keys = varargin(1:2:end);
@@ -189,5 +189,5 @@ elseif length(hit)==1
   % the requested key was  found
   val = vals{hit};
 else
-  error('multiple input arguments with the same name');
+  ft_error('multiple input arguments with the same name');
 end

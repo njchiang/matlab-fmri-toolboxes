@@ -13,7 +13,7 @@ if isfield(data, 'sampleinfo')
 end
 
 if ~isfield(data, 'cfg')
-  % fieldtrip raw data structures are expected to have a cfg
+  % FieldTrip raw data structures are expected to have a cfg
   data.cfg = [];
 end
 
@@ -63,20 +63,20 @@ else
 end
 
 if isempty(trl)
-  warning_once('the data does not contain a trial definition');
+  ft_warning('the data does not contain a trial definition');
 elseif ~isempty(trl) && size(trl,1)~=numel(nsmp)
-  warning_once('the trial definition in the configuration is inconsistent with the actual data');
+  ft_warning('the trial definition in the configuration is inconsistent with the actual data');
   trl = [];
 elseif size(trl,1)~=ntrial
-  warning_once('the trial definition in the configuration is inconsistent with the actual data');
+  ft_warning('the trial definition in the configuration is inconsistent with the actual data');
   trl = [];
 elseif nsmp~=(trl(:,2)-trl(:,1)+1)
-  warning_once('the trial definition in the configuration is inconsistent with the actual data');
+  ft_warning('the trial definition in the configuration is inconsistent with the actual data');
   trl = [];
 end
 
 if isempty(trl) || ~all(nsmp==trl(:,2)-trl(:,1)+1)
-  warning_once('reconstructing sampleinfo by assuming that the trials are consecutive segments of a continuous recording');
+  ft_warning('reconstructing sampleinfo by assuming that the trials are consecutive segments of a continuous recording');
   % construct a trial definition on the fly, assume that the trials are
   % consecutive segments of a continuous recording
   if ntrial==1,
@@ -103,7 +103,7 @@ if ~isfield(data, 'sampleinfo') && ~isempty(trl)
   data.sampleinfo = trl(:, 1:2);
 elseif ~isfield(data, 'sampleinfo') && isempty(trl)
   % this is probably an unreachable statement
-  warning_once('failed to create sampleinfo field');
+  ft_warning('failed to create sampleinfo field');
 end
 
 if (~isfield(data, 'trialinfo') || isempty(data.trialinfo)) && ~isempty(trl) && size(trl, 2) > 3,

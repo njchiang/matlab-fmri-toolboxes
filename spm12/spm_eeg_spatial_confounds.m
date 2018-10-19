@@ -13,10 +13,10 @@ function D = spm_eeg_spatial_confounds(S)
 % Copyright (C) 2008-2014 Wellcome Trust Centre for Neuroimaging
 
 % Vladimir Litvak
-% $Id: spm_eeg_spatial_confounds.m 6029 2014-05-30 18:52:03Z vladimir $
+% $Id: spm_eeg_spatial_confounds.m 7128 2017-07-03 11:58:47Z vladimir $
 
 
-SVNrev = '$Rev: 6029 $';
+SVNrev = '$Rev: 7128 $';
 
 %-Startup
 %--------------------------------------------------------------------------
@@ -24,12 +24,15 @@ spm('FnBanner', mfilename, SVNrev);
 spm('FigName','Define spatial confounds');
 
 if ~isfield(S, 'mode') && isfield(S, 'method'),          S.mode  = S.method;             end
-if ~isfield(S, 'threshold') && isfield(S, 'svdthresh'),  S.threshold  = S.svdthreshd;    end
+if ~isfield(S, 'threshold') && isfield(S, 'svdthresh'),  S.threshold  = S.svdthresh;    end
 
 
 D = spm_eeg_load(S.D);
 
+if ~isfield(S, 'conditions') || isempty(S.conditions),   S.conditions = D.condlist;      end 
+if ~iscell(S.conditions), S.conditions = {S.conditions};                                 end
 
+sconf = [];
 switch upper(S.mode)
     case 'EYES'
         [D, ok] = check(D, 'sensfid');
@@ -104,17 +107,15 @@ switch upper(S.mode)
             
             sconf.coeff(sel1, :) = spm_cond_units(L(sel2, :));
             sconf.bad(sel1, :) = 0;
-        end
-        
-        D = sconfounds(D, sconf);
+        end       
     case 'BESA'       
         sconf = spm_eeg_read_bsa(S.conffile );
-        D = sconfounds(D, sconf);
     case 'SVD'       
-        cl = D.condlist;
+        cl = S.conditions;
         svdinput = [];
         for i = 1:numel(cl)
-            svdinput = [svdinput mean(D(D.indchantype('MEEG', 'GOOD'), D.indsample(1e-3*S.timewin(1)):D.indsample(1e-3*S.timewin(2)), D.indtrial(cl{i})), 3)];
+            tmp      = D(D.indchantype('MEEG', 'GOOD'), D.indsample(1e-3*S.timewin(1)):D.indsample(1e-3*S.timewin(2)), D.indtrial(cl{i}));
+            svdinput = [svdinput, reshape(tmp, size(tmp, 1),  [])];
         end
         [U, L, V] = spm_svd(svdinput);
         
@@ -123,7 +124,7 @@ switch upper(S.mode)
             temp = zeros(size(svdinput));
             for n = size(V, 2):-1:1
                 temp = temp+U(:, n)*L(n,n)*V(:,n)';
-                if max(max(temp))>S.threshold;
+                if max(max(abs(temp)))>S.threshold;
                     S.ncomp = min(n+1, size(V, 2));
                     break;
                 else
@@ -141,16 +142,17 @@ switch upper(S.mode)
             sconf.coeff(sel1, :) = U(sel2, 1:ncomp);
             sconf.bad = ones(length(sconf.label), 1);
             sconf.bad(sel1, :) = 0;
-            D = sconfounds(D, sconf);
         end
     case 'SPMEEG'       
         Ds = spm_eeg_load(S.conffile);
-        sconf = getfield(Ds, 'sconfounds');
-        D = sconfounds(D, sconf);
+        sconf = getfield(Ds, 'sconfounds');        
     case 'CLEAR'
         D = rmfield(D, 'sconfounds');
 end
 
+if ~isempty(sconf)
+    D = sconfounds(D, sconf, 'append');
+end
 
 % Plot scalp topographies
 % ---------------------------------------------------------------------

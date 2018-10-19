@@ -1,4 +1,4 @@
-function [varargout] = funname(varargin)
+function [varargout] = ptriproj(varargin)
 
 % PTRIPROJ projects a point onto the plane going through a triangle
 %
@@ -13,7 +13,7 @@ function [varargout] = funname(varargin)
 
 % Copyright (C) 2002-2009, Robert Oostenveld
 %
-% This file is part of FieldTrip, see http://www.ru.nl/neuroimaging/fieldtrip
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
 % for the documentation and details.
 %
 %    FieldTrip is free software: you can redistribute it and/or modify
@@ -29,7 +29,7 @@ function [varargout] = funname(varargin)
 %    You should have received a copy of the GNU General Public License
 %    along with FieldTrip. If not, see <http://www.gnu.org/licenses/>.
 %
-% $Id: ptriproj.m 7123 2012-12-06 21:21:38Z roboos $
+% $Id$
 
 % compile the missing mex file on the fly
 % remember the original working directory
@@ -42,7 +42,7 @@ mexsrc  = [funname '.c'];
 
 try
   % try to compile the mex file on the fly
-  warning('trying to compile MEX file from %s', mexsrc);
+  ft_warning('trying to compile MEX file from %s', mexsrc);
   cd(mexdir);
   
   if ispc
@@ -59,7 +59,7 @@ try
 catch
   % compilation failed
   disp(lasterr);
-  error('could not locate MEX file for %s', mexname);
+  ft_error('could not locate MEX file for %s', mexname);
   cd(pwdir);
   success = false;
 end

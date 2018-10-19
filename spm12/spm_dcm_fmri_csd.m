@@ -23,7 +23,7 @@ function DCM = spm_dcm_fmri_csd(P)
 % spectra are the predicted spectra plus some smooth Gaussian fluctuations
 % (noise). The characterisation of the model parameters can then be
 % examined in terms of directed transfer functions, spectral density and
-% crosscorrelation functions at the neuronal level – having accounted for
+% crosscorrelation functions at the neuronal level - having accounted for
 % variations in haemodynamics at each node.
 %
 % note that neuronal fluctuations are not changes in synaptic activity or
@@ -33,12 +33,12 @@ function DCM = spm_dcm_fmri_csd(P)
 %
 % see also: spm_dcm_estimate
 %__________________________________________________________________________
-% Copyright (C) 2008 Wellcome Trust Centre for Neuroimaging
+% Copyright (C) 2013-2015 Wellcome Trust Centre for Neuroimaging
  
 % Karl Friston
-% $Id: spm_dcm_fmri_csd.m 6142 2014-08-27 16:10:29Z adeel $
+% $Id: spm_dcm_fmri_csd.m 7196 2017-10-31 12:07:52Z adeel $
 
-SVNid = '$Rev: 6142 $';
+SVNid = '$Rev: 7196 $';
 
 % Load DCM structure
 %--------------------------------------------------------------------------
@@ -57,15 +57,42 @@ end
 try, DCM.options.two_state;  catch, DCM.options.two_state  = 0;     end
 try, DCM.options.stochastic; catch, DCM.options.stochastic = 0;     end
 try, DCM.options.centre;     catch, DCM.options.centre     = 0;     end
-try, DCM.options.nmax;       catch, DCM.options.nmax       = 8;     end
 try, DCM.options.analysis;   catch, DCM.options.analysis   = 'CSD'; end
+try, DCM.options.Fdcm;       catch, DCM.options.Fdcm       = [1/128 0.1]; end
 try, DCM.options.nograph;    catch, DCM.options.nograph    = spm('CmdLine');  end
 
 
 % parameter initialisation
 %--------------------------------------------------------------------------
 try, DCM.M.P     = DCM.options.P;                            end
-try, DCM.M.Nmax  = DCM.options.Nmax; catch, DCM.M.Nmax = 32; end
+
+% check max iterations
+%--------------------------------------------------------------------------
+try
+    DCM.options.maxit;
+catch    
+    if isfield(DCM.options,'nN')
+        DCM.options.maxit = DCM.options.nN;
+        warning('options.nN is deprecated. Please use options.maxit');
+    else
+        DCM.options.maxit = 128;
+    end
+end
+
+try DCM.M.Nmax; catch, DCM.M.Nmax = DCM.options.maxit; end
+
+% check max nodes
+%--------------------------------------------------------------------------
+try
+    DCM.options.maxnodes;
+catch
+    if isfield(DCM.options,'nmax')
+        DCM.options.maxnodes = DCM.options.nmax;
+        warning('options.nmax is deprecated. Please use options.maxnodes');
+    else
+        DCM.options.maxnodes = 8;
+    end
+end
 
 % sizes
 %--------------------------------------------------------------------------
@@ -98,11 +125,11 @@ DCM.Y.scale = scale;
 % disable high order parameters and check for models with no inputs
 %--------------------------------------------------------------------------
 n       = DCM.n;
-DCM.b   = zeros(n,n,0);
-DCM.d   = zeros(n,n,0);
+DCM.b   = DCM.b*0;
+DCM.d   = DCM.d*0;
 if isempty(DCM.c) || isempty(DCM.U.u)
-    DCM.c      = zeros(DCM.n,1);
-    DCM.b  = zeros(DCM.n,DCM.n,1);
+    DCM.c      = zeros(DCM.n,0);
+    DCM.b      = zeros(DCM.n,DCM.n,0);
     DCM.U.u    = zeros(DCM.v,1);
     DCM.U.name = {'null'};
 end
@@ -113,9 +140,9 @@ end
 
 % eigenvector constraints on pC for large models
 %--------------------------------------------------------------------------
-if n > DCM.options.nmax
+if n > DCM.options.maxnodes
     
-    % remove confounds and find principal (nmax) modes
+    % remove confounds and find principal (maxnodes) modes
     %----------------------------------------------------------------------
     try
         y   = DCM.Y.y - DCM.Y.X0*(pinv(DCM.Y.X0)*DCM.Y.y);
@@ -123,7 +150,7 @@ if n > DCM.options.nmax
         y   = spm_detrend(DCM.Y.y);
     end
     V       = spm_svd(y');
-    V       = V(:,1:DCM.options.nmax);
+    V       = V(:,1:DCM.options.maxnodes);
     
     % remove minor modes from priors on A
     %----------------------------------------------------------------------
@@ -139,6 +166,10 @@ if isvector(DCM.a)
     DCM.M.modes = spm_svd(cov(DCM.Y.y));
 end
 
+% check for pre-specified priors
+%--------------------------------------------------------------------------
+try, pE  = DCM.M.pE; pC  = DCM.M.pC; end
+
 % create DCM
 %--------------------------------------------------------------------------
 DCM.M.IS = 'spm_csd_fmri_mtf';
@@ -148,8 +179,8 @@ DCM.M.f  = @spm_fx_fmri;
 DCM.M.x  = x;
 DCM.M.pE = pE;
 DCM.M.pC = pC;
-DCM.M.hE = 4;
-DCM.M.hC = exp(4);
+DCM.M.hE = 8;
+DCM.M.hC = 1/256;
 DCM.M.n  = length(spm_vec(x));
 DCM.M.m  = size(DCM.U.u,2);
 DCM.M.l  = n;
@@ -226,9 +257,9 @@ M.g    = @(x,u,P,M) x(:,1);                          % neuronal observer
 Qp.b        = Qp.b - 32;                             % Switch off noise
 Qp.c        = Qp.c - 32;                             % Switch off noise
 Qp.C        = Ep.C;
-[Hs Hz dtf] = spm_csd_fmri_mtf(Qp,M,DCM.U);
-[ccf pst]   = spm_csd2ccf(Hs,Hz);
-[coh fsd]   = spm_csd2coh(Hs,Hz);
+[Hs,Hz,dtf] = spm_csd_fmri_mtf(Qp,M,DCM.U);
+[ccf,pst]   = spm_csd2ccf(Hs,Hz);
+[coh,fsd]   = spm_csd2coh(Hs,Hz);
 DCM.dtf     = dtf;
 DCM.ccf     = ccf;
 DCM.coh     = coh;

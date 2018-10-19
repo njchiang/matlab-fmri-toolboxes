@@ -12,7 +12,7 @@ function [event] = read_yokogawa_event(filename, varargin)
 
 % Copyright (C) 2005, Robert Oostenveld
 %
-% This file is part of FieldTrip, see http://www.ru.nl/neuroimaging/fieldtrip
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
 % for the documentation and details.
 %
 %    FieldTrip is free software: you can redistribute it and/or modify
@@ -28,7 +28,7 @@ function [event] = read_yokogawa_event(filename, varargin)
 %    You should have received a copy of the GNU General Public License
 %    along with FieldTrip. If not, see <http://www.gnu.org/licenses/>.
 %
-% $Id: read_yokogawa_event.m 7123 2012-12-06 21:21:38Z roboos $
+% $Id$
 
 event   = [];
 handles = definehandles;
@@ -123,7 +123,7 @@ elseif ft_hastoolbox('yokogawa');
     end
 
 else
-    error('cannot determine, whether Yokogawa toolbox is present');
+    ft_error('cannot determine, whether Yokogawa toolbox is present');
 end
 
 % read the trigger channels and detect the flanks
@@ -134,13 +134,13 @@ if ~isempty(trigindx)
 end
 
 if isempty(event)
-  warning('no triggers were detected, please specify the "trigindx" option');
+  ft_warning('no triggers were detected, please specify the "trigindx" option');
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % this defines some usefull constants
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function handles = definehandles;
+function handles = definehandles
 handles.output = [];
 handles.sqd_load_flag = false;
 handles.mri_load_flag = false;

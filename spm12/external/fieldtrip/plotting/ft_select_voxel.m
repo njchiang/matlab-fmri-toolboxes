@@ -5,7 +5,7 @@ function ft_select_voxel(handle, eventdata, varargin)
 %
 % Use as
 %   voxel = ft_select_voxel(h, eventdata, ...)
-% The first two arguments are automatically passed by Matlab to any
+% The first two arguments are automatically passed by MATLAB to any
 % callback function.
 %
 % Additional options should be specified in key-value pairs and can be
@@ -30,10 +30,12 @@ function ft_select_voxel(handle, eventdata, varargin)
 % Subsequently you can click in the figure and you'll see that the disp
 % function is executed as callback and that it displays the selected
 % voxel.
+%
+% See also FT_SELECT_BOX, FT_SELECT_CHANNEL, FT_SELECT_POINT, FT_SELECT_POINT3D, FT_SELECT_RANGE
 
 % Copyright (C) 2010, Robert Oostenveld
 %
-% This file is part of FieldTrip, see http://www.ru.nl/neuroimaging/fieldtrip
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
 % for the documentation and details.
 %
 %    FieldTrip is free software: you can redistribute it and/or modify
@@ -49,7 +51,7 @@ function ft_select_voxel(handle, eventdata, varargin)
 %    You should have received a copy of the GNU General Public License
 %    along with FieldTrip. If not, see <http://www.gnu.org/licenses/>.
 %
-% $Id: ft_select_voxel.m 7123 2012-12-06 21:21:38Z roboos $
+% $Id$
 
 % get optional input arguments
 callback = ft_getopt(varargin, 'callback');

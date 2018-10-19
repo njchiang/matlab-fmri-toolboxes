@@ -20,7 +20,7 @@ function [c] = ft_connectivity_powcorr_ortho(mom, varargin)
 
 % Copyright (C) 2012 Jan-Mathijs Schoffelen
 %
-% This file is part of FieldTrip, see http://www.ru.nl/neuroimaging/fieldtrip
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
 % for the documentation and details.
 %
 %    FieldTrip is free software: you can redistribute it and/or modify
@@ -36,7 +36,7 @@ function [c] = ft_connectivity_powcorr_ortho(mom, varargin)
 %    You should have received a copy of the GNU General Public License
 %    along with FieldTrip. If not, see <http://www.gnu.org/licenses/>.
 %
-% $Id: ft_connectivity_powcorr_ortho.m 8776 2013-11-14 09:04:48Z roboos $
+% $Id$
 
 refindx = ft_getopt(varargin, 'refindx', 'all');
 tapvec  = ft_getopt(varargin, 'tapvec',  ones(1,size(mom,2)));
@@ -50,11 +50,11 @@ cmomnorm = conj(mom./abs(mom)); % only need to do conj() once
 n        = size(mom,1);
 ntap     = tapvec(1);
 if ~all(tapvec==ntap)
-  error('unequal number of tapers per observation is not yet supported');
+  ft_error('unequal number of tapers per observation is not yet supported');
 end
 % FIXME think about multiple tapers per trial
 %if ntap>1
-%  error('more than one taper per observation is not yet supported');
+%  ft_error('more than one taper per observation is not yet supported');
 %end
 
 % create a sparse matrix tra, that can be used as a right multiplying
@@ -82,7 +82,7 @@ powmom = standardise(log10(powmom), 2);
 c = zeros(n, numel(refindx));%;*2);
 N = ones(n,1);
 %warning off;
-for k = 1:numel(refindx)      
+for k = 1:numel(refindx)
   indx     = refindx(k);
   ref      = mom(indx,:);
   crefnorm = conj(ref./abs(ref));

@@ -8,7 +8,7 @@ function [dap] = read_mpi_dap(filename)
 
 % Copyright (C) 2005-2007, Robert Oostenveld
 %
-% This file is part of FieldTrip, see http://www.ru.nl/neuroimaging/fieldtrip
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
 % for the documentation and details.
 %
 %    FieldTrip is free software: you can redistribute it and/or modify
@@ -24,7 +24,7 @@ function [dap] = read_mpi_dap(filename)
 %    You should have received a copy of the GNU General Public License
 %    along with FieldTrip. If not, see <http://www.gnu.org/licenses/>.
 %
-% $Id: read_mpi_dap.m 7123 2012-12-06 21:21:38Z roboos $
+% $Id$
 
 fid = fopen(filename, 'rb', 'ieee-le');
 
@@ -71,7 +71,7 @@ for w=1:filehdr.nexps
         analog{w,s,j} = analog{w,s,j} * 2.5/2048;
       end
     else
-      error('unknown analog mode'); 
+      ft_error('unknown analog mode'); 
     end
   end
 
@@ -105,7 +105,7 @@ return;
 % SUBFUNCTION
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-function hdr = readheader(fid);
+function hdr = readheader(fid)
 % determine the header type, header size and data size
 hdr.headertype = fread(fid, 1, 'uchar');
 dummy          = fread(fid, 1, 'uchar');
@@ -177,5 +177,5 @@ switch hdr.headertype
     dummy           = fread(fid, 1, 'int16');     % 14-15
     dummy           = fread(fid, 1, 'int16');     % 16-17
   otherwise
-    error(sprintf('unsupported format for header (%d)', hdr.headertype));
+    ft_error(sprintf('unsupported format for header (%d)', hdr.headertype));
 end

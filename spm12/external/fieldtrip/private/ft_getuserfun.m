@@ -1,5 +1,6 @@
 function func = ft_getuserfun(func, prefix)
-% FT_GETUSERFUN will search the Matlab path for a function with the
+
+% FT_GETUSERFUN will search the MATLAB path for a function with the
 % appropriate name, and return a function handle to the function.
 % Considered are, in this order:
 %  - the name itself, i.e. you get exactly the same func back as you put in;
@@ -16,7 +17,7 @@ function func = ft_getuserfun(func, prefix)
 
 % Copyright (C) 2012, Eelke Spaak
 %
-% This file is part of FieldTrip, see http://www.ru.nl/neuroimaging/fieldtrip
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
 % for the documentation and details.
 %
 %    FieldTrip is free software: you can redistribute it and/or modify
@@ -32,7 +33,7 @@ function func = ft_getuserfun(func, prefix)
 %    You should have received a copy of the GNU General Public License
 %    along with FieldTrip. If not, see <http://www.gnu.org/licenses/>.
 %
-% $Id: ft_getuserfun.m 7123 2012-12-06 21:21:38Z roboos $
+% $Id$
 
 if isa(func, 'function_handle')
   % treat function handle as-is
@@ -43,7 +44,7 @@ elseif isfunction([prefix '_' func]) && ~iscompatwrapper([prefix '_' func])
 elseif isfunction(['ft_' prefix '_' func])
   func = str2func(['ft_' prefix '_' func]);
 else
-  warning(['no function by the name ''' func ''', ''' prefix '_' func...
-    ''', or ''ft_' prefix '_' func ''' could not be found']);
+  ft_warning(['no function by the name ''' func ''', ''' prefix '_' func...
+    ''', or ''ft_' prefix '_' func ''' could be found']);
   func = [];
 end

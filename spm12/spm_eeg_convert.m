@@ -44,12 +44,12 @@ function D = spm_eeg_convert(S)
 %
 % % D              - MEEG object (also written on disk)
 %__________________________________________________________________________
-% Copyright (C) 2008-2012 Wellcome Trust Centre for Neuroimaging
+% Copyright (C) 2008-2017 Wellcome Trust Centre for Neuroimaging
 
 % Vladimir Litvak
-% $Id: spm_eeg_convert.m 6190 2014-09-23 16:10:50Z guillaume $
+% $Id: spm_eeg_convert.m 7125 2017-06-23 09:49:29Z guillaume $
 
-SVNrev = '$Rev: 6190 $';
+SVNrev = '$Rev: 7125 $';
 
 %-Startup
 %--------------------------------------------------------------------------
@@ -92,6 +92,7 @@ if ~isfield(S, 'mode') || ~isequal(S.mode, 'header')
     Dhdr              = spm_eeg_convert(S1);
     hdr               = Dhdr.hdr;
     event             = Dhdr.events;
+    eventsamples      = Dhdr.events(':', 'samples');
 else
     %--------- Read and check header
     hdr = ft_read_header(S.dataset, 'headerformat', S.inputformat);
@@ -247,7 +248,9 @@ if ismember(S.mode, {'continuous', 'header'})
     
     readbytrials = 0;
     
+    
     D.timeOnset = (trl(1,1)-1)./hdr.Fs;
+ 
     D.Nsamples = nsampl;
 else % Read by trials
     if isfield(S, 'trl') || isfield(S, 'trialdef')
@@ -295,7 +298,7 @@ else % Read by trials
         try
             trialind = sort([strmatch('trial', {event.type}, 'exact'), ...
                 strmatch('average', {event.type}, 'exact')]);
-            trl = [event(trialind).sample];
+            trl = [eventsamples(trialind).sample];
             trl = double(trl(:));
             trl = [trl  trl+double([event(trialind).duration]')-1];
             
@@ -305,10 +308,10 @@ else % Read by trials
                 offset = [];
             end
             
-            if length(offset) == 1
+            if length(offset) == 1 && offset~=0
                 D.timeOnset = offset/D.Fsample;
-            else
-                D.timeOnset = 0;
+            else            
+                D.timeOnset = -hdr.nSamplesPre/hdr.Fs;
             end
             conditionlabels = {};
             for i = 1:length(trialind)
@@ -569,6 +572,7 @@ end
 
 %-Cleanup
 %--------------------------------------------------------------------------
+fprintf('%-40s: %30s\n','Completed',spm('time'));                       %-#
 spm('FigName','M/EEG convert: done'); spm('Pointer', 'Arrow');
 
 

@@ -1,6 +1,6 @@
 function [Y, xY] = spm_summarise(V,xY,fhandle,keepNaNs)
 % Summarise data within a Region of Interest
-% FUNCTION [Y, xY] = spm_summarise(V,xY,fhandle)
+% FORMAT [Y, xY] = spm_summarise(V,xY,fhandle)
 % V       - [1 x n] vector of mapped image volumes to read (from spm_vol)
 %           Or a char array of filenames
 % xY      - VOI structure (from spm_ROI)
@@ -22,10 +22,10 @@ function [Y, xY] = spm_summarise(V,xY,fhandle,keepNaNs)
 %               struct('def','sphere', 'spec',8, 'xyz',[10 20 30]'),...
 %               @mean)
 %__________________________________________________________________________
-% Copyright (C) 2010-2012 Wellcome Trust Centre for Neuroimaging
+% Copyright (C) 2010-2015 Wellcome Trust Centre for Neuroimaging
 
 % Guillaume Flandin, Ged Ridgway
-% $Id: spm_summarise.m 5670 2013-10-04 16:48:38Z ged $
+% $Id: spm_summarise.m 6490 2015-06-26 11:51:46Z guillaume $
 
 %-Argument checks
 %--------------------------------------------------------------------------
@@ -34,7 +34,7 @@ if nargin < 1 || isempty(V)
     if ~sts, error('Must select 1 or more images'), end
 end
 if iscellstr(V), V = char(V); end
-if ischar(V), V = spm_vol(V); end
+if ischar(V), V = spm_data_hdr_read(V); end
 spm_check_orientations(V);
 
 if nargin < 2 || isempty(xY), xY = struct; end
@@ -53,6 +53,8 @@ if ischar(xY)
     end
 elseif isnumeric(xY) && any(size(xY, 1) == [3 4])
     xY = struct('XYZmm', xY(1:3, :));
+elseif isstruct(xY) && isfield(xY,'fname')
+    xY = struct('def','mask', 'spec',xY);
 elseif ~isstruct(xY)
     error('Incorrect xY specified')
 end
@@ -78,7 +80,7 @@ end
 XYZ = round(V(1).mat \ [xY.XYZmm; ones(1, size(xY.XYZmm, 2))]);
 
 % Run on first volume to determine p, and transpose if column vector
-Y = fhandle(dropNaNs(spm_get_data(V(1), XYZ)));
+Y = fhandle(dropNaNs(spm_data_read(V(1), 'xyz', XYZ)));
 if ndims(Y) > 2
     error('Function must return a [1 x p] array')
 elseif size(Y, 1) ~= 1
@@ -93,5 +95,5 @@ end
 % Preallocate space and then run on remaining volumes
 Y(2:numel(V), :) = 0;
 for i = 2:numel(V)
-    Y(i, :) = fhandle(dropNaNs(spm_get_data(V(i), XYZ)));
+    Y(i, :) = fhandle(dropNaNs(spm_data_read(V(i), 'xyz', XYZ)));
 end

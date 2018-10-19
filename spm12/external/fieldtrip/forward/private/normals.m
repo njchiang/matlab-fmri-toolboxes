@@ -8,7 +8,7 @@ function [nrm] = normals(pnt, tri, opt)
 
 % Copyright (C) 2002-2007, Robert Oostenveld
 %
-% This file is part of FieldTrip, see http://www.ru.nl/neuroimaging/fieldtrip
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
 % for the documentation and details.
 %
 %    FieldTrip is free software: you can redistribute it and/or modify
@@ -24,16 +24,16 @@ function [nrm] = normals(pnt, tri, opt)
 %    You should have received a copy of the GNU General Public License
 %    along with FieldTrip. If not, see <http://www.gnu.org/licenses/>.
 %
-% $Id: normals.m 9664 2014-06-22 07:06:29Z roboos $
+% $Id$
 
 if nargin<3
   opt='vertex';
-elseif (opt(1)=='v' | opt(1)=='V')
+elseif (opt(1)=='v' || opt(1)=='V')
   opt='vertex';
-elseif (opt(1)=='t' | opt(1)=='T')
+elseif (opt(1)=='t' || opt(1)=='T')
   opt='triangle';
 else
-  error('invalid optional argument');
+  ft_error('invalid optional argument');
 end
 
 npnt = size(pnt,1);
@@ -74,7 +74,7 @@ else
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% fast cross product to replace the Matlab standard version
+% fast cross product to replace the MATLAB standard version
 function [c] = cross(a,b)
 c = [a(:,2).*b(:,3)-a(:,3).*b(:,2) a(:,3).*b(:,1)-a(:,1).*b(:,3) a(:,1).*b(:,2)-a(:,2).*b(:,1)];
 

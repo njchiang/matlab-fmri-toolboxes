@@ -7,14 +7,14 @@
  *
  * Copyright (C) 2007, Robert Oostenveld
  *
- * $Id: write_ctf_shm.c 7123 2012-12-06 21:21:38Z roboos $
+ * $Id$
  */
 
 #include <string.h>
 #include <sys/ipc.h>
 #include <sys/shm.h>
 #include "mex.h"
-#include "matrix.h"
+#include <limits.h>
 
 #define ACQ_MSGQ_SIZE      600
 #define ACQ_MSGQ_SHMKEY    0x39457f73

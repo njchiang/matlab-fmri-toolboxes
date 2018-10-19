@@ -1,7 +1,7 @@
-function [s] = getsubfield(s, f)
+function s = getsubfield(s, f)
 
 % GETSUBFIELD returns a field from a structure just like the standard
-% Matlab GETFIELD function, except that you can also specify nested fields
+% GETFIELD function, except that you can also specify nested fields
 % using a '.' in the fieldname. The nesting can be arbitrary deep.
 %
 % Use as
@@ -13,7 +13,7 @@ function [s] = getsubfield(s, f)
 
 % Copyright (C) 2005-2013, Robert Oostenveld
 %
-% This file is part of FieldTrip, see http://www.ru.nl/neuroimaging/fieldtrip
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
 % for the documentation and details.
 %
 %    FieldTrip is free software: you can redistribute it and/or modify
@@ -29,7 +29,7 @@ function [s] = getsubfield(s, f)
 %    You should have received a copy of the GNU General Public License
 %    along with FieldTrip. If not, see <http://www.gnu.org/licenses/>.
 %
-% $Id: getsubfield.m 9789 2014-09-11 07:49:09Z jansch $
+% $Id$
 
 if iscell(f)
   f = f{1};

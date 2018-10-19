@@ -7,19 +7,15 @@ function out = spm_run_dicom(job)
 % Output:
 % out    - computation results, usually a struct variable.
 %__________________________________________________________________________
-% Copyright (C) 2005-2011 Wellcome Trust Centre for Neuroimaging
+% Copyright (C) 2005-2017 Wellcome Trust Centre for Neuroimaging
 
-% $Id: spm_run_dicom.m 4740 2012-05-16 07:52:00Z volkmar $
+% $Id: spm_run_dicom.m 7201 2017-11-08 11:13:25Z guillaume $
 
 
-wd = pwd;
-try
-    if ~isempty(job.outdir{1})
-        cd(job.outdir{1});
-        fprintf('   Changing directory to: %s\n', job.outdir{1});
-    end
-catch
-    error('Failed to change directory. Aborting DICOM import.');
+if ~isempty(job.outdir{1})
+    out_dir = job.outdir{1};
+else
+    out_dir = pwd;
 end
 
 if job.convopts.icedims
@@ -28,7 +24,8 @@ else
     root_dir = job.root;
 end
 
-hdr = spm_dicom_headers(char(job.data), true);
+essentials = ~job.convopts.meta;
+hdr = spm_dicom_headers(char(job.data),essentials);
 sel = true(size(hdr));
 if ~isempty(job.protfilter) && ~strcmp(job.protfilter, '.*')
     psel   = cellfun(@(h)isfield(h, 'ProtocolName'), hdr);
@@ -38,9 +35,4 @@ if ~isempty(job.protfilter) && ~strcmp(job.protfilter, '.*')
     pnames(ssel) = cellfun(@(h)subsref(h, substruct('.','SequenceName')), hdr(ssel), 'UniformOutput', false);
     sel(psel|ssel) = ~cellfun(@isempty,regexp(pnames(psel|ssel), job.protfilter));
 end
-out = spm_dicom_convert(hdr(sel),'all',root_dir,job.convopts.format);
-
-if ~isempty(job.outdir{1})
-    fprintf('   Changing back to directory: %s\n', wd);
-    cd(wd);
-end
+out = spm_dicom_convert(hdr(sel),'all',root_dir,job.convopts.format,out_dir,job.convopts.meta);

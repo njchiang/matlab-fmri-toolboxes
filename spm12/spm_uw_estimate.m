@@ -83,7 +83,7 @@ function ds = spm_uw_estimate(P,par)
 % Copyright (C) 2003-2011 Wellcome Trust Centre for Neuroimaging
 
 % Jesper Andersson
-% $Id: spm_uw_estimate.m 5655 2013-09-25 17:58:48Z guillaume $
+% $Id: spm_uw_estimate.m 6824 2016-06-27 16:19:51Z guillaume $
 
 % This is a major rewrite which uses some new ideas to speed up
 % the estimation of the field. The time consuming part is the
@@ -166,7 +166,7 @@ function ds = spm_uw_estimate(P,par)
 %    Our tests have indicated that this is NOT a good idea though. 
 
 
-SVNid = '$Rev: 5655 $';
+SVNid = '$Rev: 6824 $';
 
 %-Say hello
 %--------------------------------------------------------------------------
@@ -247,7 +247,7 @@ ds.P  = P;
 % Get matrix of 'expansion point'-corrected movement parameters 
 % for which we seek partial derivative fields.
 %
-[ds.q,ds.ep] = make_q(P,ds.fot,ds.sot,ds.exp_round);
+[ds.q,ds.p0] = make_q(P,ds.fot,ds.sot,ds.exp_round);
 
 %
 % Create matrix for regularisation of warps.
@@ -627,9 +627,9 @@ function AtA = uwAtA2(y,Bx1,By1,Bz1,Bx2,By2,Bz2)
 % A1 and A2 are possible to express as a kronecker
 % product of lesser matrices.
 
-[nx,mx1] = size(Bx1,1); [nx,mx2] = size(Bx2,1);
-[ny,my1] = size(By1,1); [ny,my2] = size(By2,1);
-[nz,mz1] = size(Bz1,1); [nz,mz2] = size(Bz2,1);
+[nx,mx1] = size(Bx1); [nx,mx2] = size(Bx2);
+[ny,my1] = size(By1); [ny,my2] = size(By2);
+[nz,mz1] = size(Bz1); [nz,mz2] = size(Bz2);
 AtA      = zeros(mx1*my1*mz1,mx2*my2*mz2);
 for sl =1:nz
    tmp  = reshape(y((sl-1)*nx*ny+1:sl*nx*ny),nx,ny);

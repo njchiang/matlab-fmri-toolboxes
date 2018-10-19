@@ -1,13 +1,15 @@
 function host = gethostname()
 
-% HOSTNAME
+% HOSTNAME returns the hostname of this computer
 %
 % Use as
 %   str = hostname;
+%
+% See also GETUSERNAME, GETADDRESS
 
 % Copyright (C) 2011, Eelke Spaak
 %
-% This file is part of FieldTrip, see http://www.ru.nl/neuroimaging/fieldtrip
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
 % for the documentation and details.
 %
 %    FieldTrip is free software: you can redistribute it and/or modify
@@ -23,7 +25,7 @@ function host = gethostname()
 %    You should have received a copy of the GNU General Public License
 %    along with FieldTrip. If not, see <http://www.gnu.org/licenses/>.
 %
-% $Id: gethostname.m 8776 2013-11-14 09:04:48Z roboos $
+% $Id$
 
 % this is to speed up subsequent calls
 persistent previous_argout

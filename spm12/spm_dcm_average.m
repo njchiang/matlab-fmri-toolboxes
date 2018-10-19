@@ -32,7 +32,7 @@ function [DCM] = spm_dcm_average(P,name,nocond,graphics)
 % Copyright (C) 2008 Wellcome Trust Centre for Neuroimaging
 
 % Will Penny & Klaas Enno Stephan
-% $Id: spm_dcm_average.m 5900 2014-02-27 21:54:51Z karl $
+% $Id: spm_dcm_average.m 6724 2016-02-19 19:13:07Z karl $
 
 
 % Preiminaries
@@ -107,7 +107,7 @@ for model = 1:N
     if graphics
         T(model) = trace(Cp);
         H(model) = spm_logdet(miCp(:,:,model));
-        F(model) = DCM.F;
+        Fs(model) = DCM.F;
     end
     
 end
@@ -118,7 +118,7 @@ end
 if graphics
     spm_figure('GetWin','BPA');
     
-    subplot(3,1,1), bar(F)
+    subplot(3,1,1), bar(Fs)
     title('Free energy','FontSize',16)
     xlabel('Subject'), axis square
     
@@ -138,7 +138,7 @@ end
 % averaged posterior covariance
 %--------------------------------------------------------------------------
 ipC = inv(U'*pC*U);
-Cp  = inv(sum(miCp,3) - (N - 1)*ipC);
+Cp  = inv(sum(miCp,3));
 
 % averaged posterior mean
 %--------------------------------------------------------------------------
@@ -147,7 +147,7 @@ wEp = 0;
 for model = 1:N
     wEp   = wEp + miCp(:,:,model)*mEp(:,model);
 end
-Ep  = Cp*(wEp - (N - 1)*ipC*U'*pE);
+Ep  = Cp*wEp;
 
 % project back through U
 %--------------------------------------------------------------------------

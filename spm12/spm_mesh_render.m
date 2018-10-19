@@ -27,15 +27,19 @@ function varargout = spm_mesh_render(action,varargin)
 % FORMAT MAP = spm_mesh_render('ColourMap',AX)
 % Retrieves the current colourmap.
 %
+% FORMAT H = spm_mesh_render('View',AX, V)
+% AX       - axis handle or structure returned by spm_mesh_render('Disp',...)
+% V        - viewpoint specification (see view())
+%
 % FORMAT spm_mesh_render('Register',AX,hReg)
 % AX       - axis handle or structure returned by spm_mesh_render('Disp',...)
 % hReg     - Handle of HandleGraphics object to build registry in.
 % See spm_XYZreg for more information.
 %__________________________________________________________________________
-% Copyright (C) 2010-2011 Wellcome Trust Centre for Neuroimaging
+% Copyright (C) 2010-2017 Wellcome Trust Centre for Neuroimaging
 
 % Guillaume Flandin
-% $Id: spm_mesh_render.m 5411 2013-04-15 11:45:08Z guillaume $
+% $Id: spm_mesh_render.m 7177 2017-09-28 09:52:56Z guillaume $
 
 
 %-Input parameters
@@ -57,12 +61,13 @@ switch lower(action)
     %======================================================================
     case 'disp'
         if isempty(varargin)
-            [M, sts] = spm_select(1,'mesh','Select surface mesh file');
+            [M, sts] = spm_select([1,Inf],'mesh','Select surface mesh file');
             if ~sts, return; end
         else
             M = varargin{1};
         end
-        if ischar(M) || isstruct(M), M = gifti(M); end
+        M = gifti(M);
+        if numel(M) > 1, M = gifti(spm_mesh_join(M)); end
         if ~isfield(M,'vertices')
             try
                 MM = M;
@@ -128,9 +133,11 @@ switch lower(action)
         
         %-Set viewpoint, light and manipulation options
         %------------------------------------------------------------------
+        if isfield(O,'azimuth'), az = O.azimuth; else az = -90; end
+        if isfield(O,'elevation'), el = O.elevation; else el = 0; end
         axis(H.axis,'image');
         axis(H.axis,'off');
-        view(H.axis,[-90 0]);
+        view(H.axis,[az el]);
         material(H.figure,'dull');
         H.light = camlight; set(H.light,'Parent',H.axis);
         
@@ -146,6 +153,7 @@ switch lower(action)
         %------------------------------------------------------------------
         setappdata(H.axis,'handles',H);
         set(H.patch,'Visible','on');
+        camlight(H.light);
         
         %-Add context menu
         %------------------------------------------------------------------
@@ -168,6 +176,9 @@ switch lower(action)
         
         uimenu(cmenu, 'Label','Image Sections...', 'Interruptible','off', ...
             'Callback',{@myImageSections, H});
+        
+        uimenu(cmenu, 'Label','Change geometry...', 'Interruptible','off', ...
+            'Callback',{@myChangeGeometry, H});
         
         c = uimenu(cmenu, 'Label', 'Connected Components', 'Interruptible','off');
         C = getappdata(H.patch,'cclabel');
@@ -217,14 +228,16 @@ switch lower(action)
         uimenu(cmenu, 'Label','Save As...', 'Separator', 'on', ...
             'Callback', {@mySave, H});
         
-        set(H.rotate3d,'enable','off');
-        try, set(H.rotate3d,'uicontextmenu',cmenu); end
-        try, set(H.patch,   'uicontextmenu',cmenu); end
-        set(H.rotate3d,'enable','on');
+        set(H.rotate3d,'Enable','off');
+        try, set(H.rotate3d,'UIContextMenu',cmenu); end
+        try, set(H.patch,   'UIContextMenu',cmenu); end
+        set(H.rotate3d,'Enable','on');
         
-        dcm_obj = datacursormode(H.figure);
-        set(dcm_obj, 'Enable','off', 'SnapToDataVertex','on', ...
-            'DisplayStyle','Window', 'Updatefcn',{@myDataCursorUpdate, H});
+        try
+            dcm_obj = datacursormode(H.figure);
+            set(dcm_obj, 'Enable','off', 'SnapToDataVertex','on', ...
+                'DisplayStyle','Window', 'Updatefcn',{@myDataCursorUpdate, H});
+        end
         
     %-Overlay
     %======================================================================
@@ -315,6 +328,32 @@ switch lower(action)
             updateTexture(H,d);
         end
         
+    %-View
+    %======================================================================
+    case 'view'
+        if isempty(varargin), varargin{1} = gca; end
+        H = getHandles(varargin{1});
+        if numel(varargin) < 2, v = 'left'; else v = varargin{2}; end
+        if ischar(v)
+            switch lower(v)
+                case 'right'
+                    v = [90 0];
+                case 'left'
+                    v = [-90 0];
+                case 'top'
+                    v = [0 90];
+                case 'bottom'
+                    v = [-180 -90];
+                case 'front'
+                    v = [-180 0];
+                case 'back'
+                    v = [0 0];
+                otherwise
+                    error('Unknown view position.');
+            end
+        end
+        myView([],[],H,v);
+        
     %-Register
     %======================================================================
     case 'register'
@@ -325,6 +364,18 @@ switch lower(action)
         hs   = myCrossBar('Create',H,xyz);
         set(hs,'UserData',hReg);
         spm_XYZreg('Add2Reg',hReg,hs,@myCrossBar);
+        
+    %-Debug
+    %======================================================================
+    case 'debug'
+        if isempty(varargin), varargin{1} = gca; end
+        H = getHandles(varargin{1});
+        set(H.patch,'EdgeColor','r');
+        M = getappdata(H.patch,'patch');
+        for i=1:size(M.vertices,1)
+            text(M.vertices(i,1),M.vertices(i,2),M.vertices(i,3),...
+                sprintf('%d',i));
+        end
         
     %-Otherwise...
     %======================================================================
@@ -494,11 +545,11 @@ set(obj,'Checked','on');
 
 %==========================================================================
 function mySwitchRotate(obj,evt,H)
-if strcmpi(get(H.rotate3d,'enable'),'on')
-    set(H.rotate3d,'enable','off');
+if strcmpi(get(H.rotate3d,'Enable'),'on')
+    set(H.rotate3d,'Enable','off');
     set(obj,'Checked','off');
 else
-    set(H.rotate3d,'enable','on');
+    set(H.rotate3d,'Enable','on');
     set(obj,'Checked','on');
 end
 
@@ -575,7 +626,9 @@ function mySave(obj,evt,H)
     '*.gii' 'GIfTI files (*.gii)'; ...
     '*.png' 'PNG files (*.png)';...
     '*.dae' 'Collada files (*.dae)';...
-    '*.idtf' 'IDTF files (*.idtf)'}, 'Save as');
+    '*.idtf' 'IDTF files (*.idtf)';...
+    '*.vtk' 'VTK files (*.vtk)';...
+    '*.obj' 'OBJ files (*.obj)'}, 'Save as');
 if ~isequal(filename,0) && ~isequal(pathname,0)
     [pth,nam,ext] = fileparts(filename);
     switch ext
@@ -587,6 +640,10 @@ if ~isequal(filename,0) && ~isequal(pathname,0)
             filterindex = 3;
         case '.idtf'
             filterindex = 4;
+        case {'.vtk','.vtp'}
+            filterindex = 5;
+        case '.obj'
+            filterindex = 6;
         otherwise
             switch filterindex
                 case 1
@@ -595,6 +652,12 @@ if ~isequal(filename,0) && ~isequal(pathname,0)
                     filename = [filename '.png'];
                 case 3
                     filename = [filename '.dae'];
+                case 4
+                    filename = [filename '.idtf'];
+                case 5
+                    filename = [filename '.vtk'];
+                case 6
+                    filename = [filename '.obj'];
             end
     end
     switch filterindex
@@ -634,17 +697,17 @@ if ~isequal(filename,0) && ~isequal(pathname,0)
             set(get(h,'children'),'visible','off');
             %a = get(h,'children');
             %set(a,'Position',get(a,'Position').*[0 0 1 1]+[10 10 0 0]);       
-            if isdeployed
-                deployprint(h, '-dpng', '-opengl', fullfile(pathname, filename));
-            else
-                print(h, '-dpng', '-opengl', fullfile(pathname, filename));
-            end
+            print(h, '-dpng', '-opengl', fullfile(pathname, filename));
             close(h);
             set(getappdata(obj,'fig'),'renderer',r);
         case 3
-            save(gifti(H.patch),fullfile(pathname, filename),'collada');
+            saveas(gifti(H.patch),fullfile(pathname, filename),'collada');
         case 4
-            save(gifti(H.patch),fullfile(pathname, filename),'idtf');
+            saveas(gifti(H.patch),fullfile(pathname, filename),'idtf');
+        case 5
+            saveas(gifti(H.patch),fullfile(pathname, filename),'vtk');
+        case 6
+            saveas(gifti(H.patch),fullfile(pathname, filename),'obj');
     end
 end
 
@@ -664,6 +727,18 @@ function myImageSections(obj,evt,H)
 [P, sts] = spm_select(1,'image','Select image to render');
 if ~sts, return; end
 renderSlices(H,P);
+
+%==========================================================================
+function myChangeGeometry(obj,evt,H)
+[P, sts] = spm_select([1, Inf],'mesh','Select new geometry mesh');
+if ~sts, return; end
+G = gifti(P);
+if numel(G) > 1, G = gifti(spm_mesh_join(G)); end
+if size(H.patch.Vertices,1) ~= size(G.vertices,1)
+    error('Number of vertices must match.');
+end
+H.patch.Vertices = G.vertices;
+H.patch.Faces = G.faces;
 
 %==========================================================================
 function renderSlices(H,P,pls)
@@ -713,7 +788,7 @@ if ischar(v)
         [SPM,v] = spm_getSPM(struct('swd',p));
         cd(swd);
     else
-        try, spm_vol(v); catch, v = gifti(v); end;
+        try, spm_vol(v); catch, v = gifti(v); end
     end
 end
 if isa(v,'gifti'), v = v.cdata; end

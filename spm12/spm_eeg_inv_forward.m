@@ -9,24 +9,30 @@ function D = spm_eeg_inv_forward(varargin)
 % Output:
 % D                - EEG/MEG struct with filenames of Gain matrices)
 %__________________________________________________________________________
-% Copyright (C) 2008-2014 Wellcome Trust Centre for Neuroimaging
+% Copyright (C) 2008-2017 Wellcome Trust Centre for Neuroimaging
 
 % Jeremie Mattout & Christophe Phillips
-% $Id: spm_eeg_inv_forward.m 6182 2014-09-18 12:03:18Z guillaume $
+% $Id: spm_eeg_inv_forward.m 7116 2017-06-20 09:21:27Z guillaume $
 
+
+SVNrev = '$Rev';
+
+%-Startup
+%--------------------------------------------------------------------------
+spm('FnBanner', mfilename, SVNrev);
 
 %-Initialisation
 %--------------------------------------------------------------------------
 [D, val] = spm_eeg_inv_check(varargin{:});
 
 if numel(D.inv{val}.datareg) ~= numel(D.inv{val}.forward)
-    error('Separate coregistration is required for every modality');
+    error('Separate coregistration is required for every modality.');
 end
 
 Fgraph = spm_figure('FindWin','Graphics');
 spm_figure('Clear',Fgraph);
 spm('Pointer', 'Watch');
-if isempty(Fgraph) || spm('CmdLine'), graph = 'no'; else graph = 'yes'; end
+if isempty(Fgraph) || spm('CmdLine'), graph = 'no'; else, graph = 'yes'; end
 
 for i = 1:numel(D.inv{val}.forward)
     M    = D.inv{val}.datareg(i).fromMNI*D.inv{val}.mesh.Affine;
@@ -40,9 +46,9 @@ for i = 1:numel(D.inv{val}.forward)
     sens = D.inv{val}.datareg(i).sensors;
     
     if isequal(D.inv{val}.datareg(i).modality, 'MEG')
-        sens = ft_datatype_sens(sens, 'version', 'upcoming', 'amplitude', 'T', 'distance', 'm');
+        sens = ft_datatype_sens(sens, 'amplitude', 'T', 'distance', 'm');
     else
-        sens = ft_datatype_sens(sens, 'version', 'upcoming', 'amplitude', 'V', 'distance', 'm');
+        sens = ft_datatype_sens(sens, 'amplitude', 'V', 'distance', 'm');
     end
         
     switch D.inv{val}.forward(i).voltype
@@ -73,12 +79,12 @@ for i = 1:numel(D.inv{val}.forward)
             vol  = ft_prepare_headmodel(cfg, headshape);
             
             cfg = [];
-            cfg.vol      = vol;
-            cfg.grid.pos = mesh.tess_ctx.vert;
-            cfg.spherify = 'yes';
-            gridsphere = ft_prepare_sourcemodel(cfg);
+            cfg.headmodel = vol;
+            cfg.grid.pos  = mesh.tess_ctx.vert;
+            cfg.spherify  = 'yes';
+            gridsphere    = ft_prepare_sourcemodel(cfg);
             
-            mesh_correction    = rmfield(cfg, {'vol', 'grid'});
+            mesh_correction    = rmfield(cfg, {'headmodel', 'grid'});
             
             mesh.tess_ctx.vert = gridsphere.pos;
             modality = 'EEG';
@@ -113,21 +119,21 @@ for i = 1:numel(D.inv{val}.forward)
                 cfg.siunits      = 'yes';
                 vol = ft_prepare_headmodel(cfg, vol);
                 
-                spm_progress_bar('Set', 1); drawnow;
+                spm_progress_bar('Set', 1);
                 
-                save(volfile, 'vol');
+                save(volfile, 'vol', spm_get_defaults('mat.format'));
                 
                 spm_progress_bar('Clear');
                 spm('Pointer', 'Arrow');
             end
             
             cfg = [];
-            cfg.vol = vol;
+            cfg.headmodel = vol;
             cfg.grid.pos = mesh.tess_ctx.vert;         
             cfg.moveinward = 6e-3; %move to empirically determined BEM safe zone
             gridcorrect = ft_prepare_sourcemodel(cfg);
             
-            mesh_correction    = rmfield(cfg, {'vol', 'grid'});
+            mesh_correction    = rmfield(cfg, {'headmodel', 'grid'});
             
             mesh.tess_ctx.vert = gridcorrect.pos;
             
@@ -200,7 +206,7 @@ for i = 1:numel(D.inv{val}.forward)
             modality                   = 'MEG';
             
         otherwise
-            error('Unsupported volume model type');
+            error('Unsupported volume model type.');
     end
     
     D.inv{val}.forward(i).vol             = vol;
@@ -220,4 +226,5 @@ end
 % This is to force recomputing the lead fields
 try, D.inv{val} = rmfield(D.inv{val}, 'gainmat'); end
 
+fprintf('%-40s: %30s\n','Completed',spm('time'));                       %-#
 spm('Pointer', 'Arrow');

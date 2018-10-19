@@ -10,10 +10,12 @@ function [event] = read_bucn_nirsevent(filename)
 %
 % Use as
 %   [event] = read_bucn_nirshdr(filename)
+%
+% See also READ_BUCN_NIRSHDR, READ_BUCN_NIRSDATA
 
 % Copyright (C) 2011, Jan-Mathijs Schoffelen
 %
-% This file is part of FieldTrip, see http://www.ru.nl/neuroimaging/fieldtrip
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
 % for the documentation and details.
 %
 %    FieldTrip is free software: you can redistribute it and/or modify
@@ -29,7 +31,7 @@ function [event] = read_bucn_nirsevent(filename)
 %    You should have received a copy of the GNU General Public License
 %    along with FieldTrip. If not, see <http://www.gnu.org/licenses/>.
 %
-% $Id: read_bucn_nirsevent.m 8776 2013-11-14 09:04:48Z roboos $
+% $Id$
 
 fid = fopen(filename, 'r');
 

@@ -8,10 +8,10 @@ function SPM = spm_contrasts(SPM,Ic)
 % This function fills in SPM.xCon and writes con_????, ess_???? and
 % spm?_???? images.
 %__________________________________________________________________________
-% Copyright (C) 2002-2012 Wellcome Trust Centre for Neuroimaging
+% Copyright (C) 2002-2017 Wellcome Trust Centre for Neuroimaging
 
 % Karl Friston, Will Penny & Guillaume Flandin
-% $Id: spm_contrasts.m 5786 2013-12-06 18:25:00Z guillaume $
+% $Id: spm_contrasts.m 7029 2017-02-24 15:39:07Z guillaume $
 
 
 % Temporary copy of the SPM variable, to avoid saving it in SPM.mat unless
@@ -53,8 +53,23 @@ else
     VHp   = SPM.VResMS;
 end
 
-if spm_mesh_detect(Vbeta), file_ext = '.gii';
-else file_ext = spm_file_ext; end
+if spm_mesh_detect(Vbeta)
+    file_ext = '.gii';
+    g        = SPM.xY.VY(1).private;
+    metadata = g.private.metadata;
+    name     = {metadata.name};
+    if any(ismember(name,'SurfaceID'))
+        metadata = metadata(ismember(name,'SurfaceID'));
+        metadata = {metadata.name, metadata.value};
+    elseif isfield(g,'faces') && ~isempty(g.faces)
+        metadata = {'SurfaceID', SPM.xY.VY(1).fname};
+    else
+        metadata = {};
+    end
+else
+    file_ext = spm_file_ext;
+    metadata = {};
+end
 
 %-Compute & store contrast parameters, contrast/ESS images, & SPM images
 %==========================================================================
@@ -111,7 +126,8 @@ for i = 1:length(Ic)
                         'dt',     [spm_type('float32'), spm_platform('bigend')],...
                         'mat',    SPM.xVol.M,...
                         'pinfo',  [1,0,0]',...
-                        'descrip',sprintf('Contrast %d: %s',ic,xCon(ic).name));
+                        'descrip',sprintf('Contrast %d: %s',ic,xCon(ic).name),...
+                        metadata{:});
                     
                     xCon(ic).Vcon = spm_data_hdr_write(xCon(ic).Vcon);
                     
@@ -150,7 +166,8 @@ for i = 1:length(Ic)
                     'dt',     [spm_type('float32'), spm_platform('bigend')],...
                     'mat',    SPM.xVol.M,...
                     'pinfo',  [1,0,0]',...
-                    'descrip',sprintf('ESS contrast %d: %s',ic,xCon(ic).name));
+                    'descrip',sprintf('ESS contrast %d: %s',ic,xCon(ic).name),...
+                    metadata{:});
                 
                 xCon(ic).Vcon = spm_data_hdr_write(xCon(ic).Vcon);
                 
@@ -188,7 +205,7 @@ for i = 1:length(Ic)
     if isempty(xCon(ic).Vspm) || xCon(ic).STAT == 'P'
         % (always update PPM as size threshold, gamma, may have changed)
 
-        fprintf('\t%-32s: %30s',sprintf('spm{%c} image %2d',xCon(ic).STAT,ic),...
+        fprintf('\t%-32s: %30s',sprintf('spm{%s} image %2d',xCon(ic).STAT,ic),...
             '...computing');                                            %-#
         
         switch(xCon(ic).STAT)
@@ -210,7 +227,7 @@ for i = 1:length(Ic)
                     % Simple contrast - Gaussian distributed
                     
                     c     = xCon(ic).c;
-                    cB    = spm_get_data(xCon(ic).Vcon,XYZ);
+                    cB    = spm_data_read(xCon(ic).Vcon,'xyz',XYZ);
                     if isfield(SPM.PPM,'VB');
                         % If posterior sd image for that contrast does
                         % not already exist, then compute it
@@ -220,7 +237,7 @@ for i = 1:length(Ic)
                             SPM = spm_vb_contrasts(SPM,XYZ,xCon,ic);
                         end
                         % Read in posterior sd image for contrast
-                        Vsd = spm_get_data(SPM.PPM.Vcon_sd(ic),XYZ);
+                        Vsd = spm_data_read(SPM.PPM.Vcon_sd(ic),'xyz',XYZ);
                         VcB = Vsd.^2;
                     else
                         VcB   = c'*SPM.PPM.Cby*c;
@@ -228,7 +245,7 @@ for i = 1:length(Ic)
                             
                             % hyperparameter and Taylor approximation
                             %----------------------------------------------
-                            l   = spm_get_data(SPM.VHp(j),XYZ);
+                            l   = spm_data_read(SPM.VHp(j),'xyz',XYZ);
                             VcB = VcB + (c'*SPM.PPM.dC{j}*c)*(l - SPM.PPM.l(j));
                         end
                     end
@@ -246,7 +263,7 @@ for i = 1:length(Ic)
                     % Compound contrast - Log Bayes Factor
                     fprintf('\t\t%-75s\n','Log Bayes Factor for compound contrast');
                     fprintf('\t%-32s: %29s\n',' ',' ');
-                    Z = spm_get_data(xCon(ic).Vcon,XYZ);
+                    Z = spm_data_read(xCon(ic).Vcon,'xyz',XYZ);
                     
                     str = sprintf('[%1.2f]',xCon(ic).eidf);
                 end
@@ -269,13 +286,14 @@ for i = 1:length(Ic)
         %-Write SPM - statistic image
         %------------------------------------------------------------------
         xCon(ic).Vspm = struct(...
-            'fname',  [sprintf('spm%c_%04d',xCon(ic).STAT,ic) file_ext],...
+            'fname',  [sprintf('spm%s_%04d',xCon(ic).STAT,ic) file_ext],...
             'dim',    SPM.xVol.DIM',...
             'dt',     [spm_type('float32'), spm_platform('bigend')],...
             'mat',    SPM.xVol.M,...
             'pinfo',  [1,0,0]',...
-            'descrip',sprintf('SPM{%c_%s} - contrast %d: %s',...
-                xCon(ic).STAT,str,ic,xCon(ic).name));
+            'descrip',sprintf('SPM{%s_%s} - contrast %d: %s',...
+                xCon(ic).STAT,str,ic,xCon(ic).name),...
+            metadata{:});
         
         xCon(ic).Vspm = spm_data_hdr_write(xCon(ic).Vspm);
         
@@ -284,8 +302,13 @@ for i = 1:length(Ic)
         xCon(ic).Vspm = spm_data_write(xCon(ic).Vspm,tmp);
         
         clear tmp Z
-        fprintf('%s%30s\n',repmat(sprintf('\b'),1,30),sprintf(...
-            '...written %s',spm_file(xCon(ic).Vspm.fname,'filename'))); %-#
+        cmd = sprintf(['[hReg,xSPM,SPM] = spm_results_ui(''Setup'',',...
+            'struct(''swd'',''%s'',''Ic'',%d));',...
+            'TabDat = spm_list(''List'',xSPM,hReg);'],pwd,ic);
+        img = spm_file(spm_file(xCon(ic).Vspm.fname,'filename'),'link',cmd);
+        n = 30; if length(img)>n, n = length(img)+n-13; end
+        fprintf('%s%*s\n',repmat(sprintf('\b'),1,30),n,sprintf(...
+            '...written %s',img)); %-#
         
     end % (if isempty(xCon(ic)...)
     
@@ -301,5 +324,7 @@ SPM.xCon = xCon;
 if spm_check_version('matlab','8.0') >= 0, my_isequaln = @isequaln;
 else my_isequaln = @isequalwithequalnans; end
 if ~my_isequaln(tmpSPM,SPM)
+    fprintf('\t%-32s: %30s','Saving SPM.mat','...writing');             %-#
     save('SPM.mat', 'SPM', spm_get_defaults('mat.format'));
+    fprintf('%s%30s\n',repmat(sprintf('\b'),1,30),'...SPM.mat saved')   %-#
 end

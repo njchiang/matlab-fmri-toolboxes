@@ -28,7 +28,7 @@ function [ avw, machine ] = avw_hdr_read(fileprefix, machine, verbose)
 % See also avw_hdr_write, avw_hdr_make, avw_view_hdr, avw_view
 % 
 
-% $Revision: 7123 $ $Date: 2009/01/14 09:24:45 $
+% $Revision$ $Date: 2009/01/14 09:24:45 $
 
 % Licence:  GNU GPL, no express or implied warranties
 % History:  05/2002, Darren.Weber@flinders.edu.au
@@ -40,13 +40,12 @@ function [ avw, machine ] = avw_hdr_read(fileprefix, machine, verbose)
 if ~exist('verbose','var'), verbose = 1; end
 
 if verbose,
-    version = '[$Revision: 7123 $]';
+    version = '[$Revision$]';
     fprintf('\nAVW_HDR_READ [v%s]\n',version(12:16));  tic;
 end
 
 if ~exist('fileprefix','var'),
-    msg = sprintf('...no input fileprefix - see help avw_hdr_read\n\n');
-    error(msg);
+    ft_error('...no input fileprefix - see help avw_hdr_read\n\n');
 end
 if ~exist('machine','var'), machine = 'ieee-le'; end
 
@@ -83,18 +82,16 @@ if exist(file),
         avw.fileprefix = fileprefix;
         fclose(fid);
     end
-    if ~isequal(avw.hdr.hk.sizeof_hdr,348),
+    if ~isequal(avw.hdr.hk.sizeof_hdr,348)
         % Now throw an error
         if verbose, fprintf('...failed.\n'); end
-        msg = sprintf('...size of header not equal to 348 bytes!\n\n');
-        error(msg);
+        ft_error('...size of header not equal to 348 bytes!\n\n');
     end
 else
-    msg = sprintf('...cannot find file %s.hdr\n\n',file);
-    error(msg);
+    ft_error('...cannot find file %s.hdr\n\n',file);
 end
 
-if verbose,
+if verbose
     t=toc; fprintf('...done (%5.2f sec).\n',t);
 end
 

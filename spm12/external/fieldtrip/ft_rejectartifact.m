@@ -65,7 +65,7 @@ function [cfg] = ft_rejectartifact(cfg, data)
 
 % Copyright (C) 2003-2007, Robert Oostenveld
 %
-% This file is part of FieldTrip, see http://www.ru.nl/neuroimaging/fieldtrip
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
 % for the documentation and details.
 %
 %    FieldTrip is free software: you can redistribute it and/or modify
@@ -81,31 +81,34 @@ function [cfg] = ft_rejectartifact(cfg, data)
 %    You should have received a copy of the GNU General Public License
 %    along with FieldTrip. If not, see <http://www.gnu.org/licenses/>.
 %
-% $Id: ft_rejectartifact.m 9521 2014-05-14 09:45:42Z roboos $
+% $Id$
 
-% FIXME this function contains a lot of lines of code that pertain to backward 
-% compatibility support that dates back to 2004/2005. It would be good to strip 
+% FIXME this function contains a lot of lines of code that pertain to backward
+% compatibility support that dates back to 2004/2005. It would be good to strip
 % that code and only keep the relevant parts
 
-revision = '$Id: ft_rejectartifact.m 9521 2014-05-14 09:45:42Z roboos $';
+% these are used by the ft_preamble/ft_postamble function and scripts
+ft_revision = '$Id$';
+ft_nargin   = nargin;
+ft_nargout  = nargout;
 
 % do the general setup of the function
 ft_defaults
 ft_preamble init
-ft_preamble provenance
-ft_preamble trackconfig
 ft_preamble debug
 ft_preamble loadvar data
+ft_preamble provenance data
+ft_preamble trackconfig
 
-% the abort variable is set to true or false in ft_preamble_init
-if abort
+% the ft_abort variable is set to true or false in ft_preamble_init
+if ft_abort
   return
 end
 
 % ft_checkdata is done further down
 
 % check if the input cfg is valid for this function
-cfg = ft_checkconfig(cfg, 'dataset2files', {'yes'});
+cfg = ft_checkconfig(cfg, 'dataset2files', 'yes');
 
 % set the defaults
 if ~isfield(cfg, 'artfctdef'),              cfg.artfctdef        = [];         end
@@ -117,14 +120,14 @@ if ~isfield(cfg.artfctdef,'feedback'),      cfg.artfctdef.feedback = 'no';     e
 
 % convert from old-style to new-style configuration
 if isfield(cfg,'reject')
-  warning('converting from old-style artifact configuration to new-style');
+  ft_warning('converting from old-style artifact configuration to new-style');
   cfg.artfctdef.reject = cfg.reject;
   cfg = rmfield(cfg, 'reject');
 end
 
 % convert from old-style to new-style configuration
 if isfield(cfg.artfctdef,'common')
-  warning('converting from old-style artifact configuration to new-style');
+  ft_warning('converting from old-style artifact configuration to new-style');
   if isfield(cfg.artfctdef.common,'minaccepttim')
     cfg.artfctdef.minaccepttim = cfg.artfctdef.common.minaccepttim;
     cfg.artfctdef = rmfield(cfg.artfctdef, 'common');
@@ -194,8 +197,8 @@ hasdata = exist('data', 'var');
 if hasdata
   % check if the input data is valid for this function
   data = ft_checkdata(data, 'hassampleinfo', 'yes');
+  
   if isfield(data, 'sampleinfo')
-    
     trl = zeros(numel(data.trial), 3);
     trl(:,[1 2]) = data.sampleinfo;
     
@@ -207,11 +210,17 @@ if hasdata
     end
     
     if isfield(data, 'trialinfo')
-      trl(:, 3+(1:size(data.trialinfo,2))) = data.trialinfo;
+      if istable(data.trialinfo)
+        % convert table into normal array, keep the column labels
+        VariableNames = data.trialinfo.Properties.VariableNames;
+        data.trialinfo = table2array(data.trialinfo);
+      end
+      trl = [trl data.trialinfo];
     end
   else
     trl = [];
   end
+  
 elseif isfield(cfg, 'trl')
   trl = cfg.trl;
 end
@@ -220,9 +229,9 @@ end
 if ~isempty(cfg.artfctdef.crittoilim)
   
   if (size(cfg.artfctdef.crittoilim,2) ~= 2 ...
-    || (size(cfg.artfctdef.crittoilim,1) ~= size(trl,1) ...
-        && size(cfg.artfctdef.crittoilim,1) ~= 1))
-    error('if specified, cfg.artfctdef.crittoilim should be a 1x2 or Nx2 vector');  
+      || (size(cfg.artfctdef.crittoilim,1) ~= size(trl,1) ...
+      && size(cfg.artfctdef.crittoilim,1) ~= 1))
+    ft_error('if specified, cfg.artfctdef.crittoilim should be a 1x2 or Nx2 vector');
   end
   
   % if specified as 1x2 vector, expand into Nx2
@@ -237,7 +246,7 @@ end
 
 % ensure that there are trials that can be scanned for artifacts and/or rejected
 if isempty(trl)
-  error('no trials were selected, cannot perform artifact detection/rejection');
+  ft_error('no trials were selected, cannot perform artifact detection/rejection');
 end
 
 % prevent double occurences of artifact types, ensure that the order remains the same
@@ -248,8 +257,8 @@ cfg.artfctdef.type = cfg.artfctdef.type(:)';
 
 % If bad parts are to be filled with nans, make sure data is available
 if strcmp(cfg.artfctdef.reject, 'nan') && ~hasdata
-    error('If bad parts are to be filled with nans, input data has to be specified');
-end;
+  ft_error('If bad parts are to be filled with nans, input data has to be specified');
+end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % call the appropriate function for each of the artifact types
@@ -268,7 +277,7 @@ end
 
 % collect the artifacts that have been detected from cfg.artfctdef.xxx.artifact
 dum = fieldnames(cfg.artfctdef);
-sel = [];
+sel = false(size(dum));
 artifact = {};
 for i=1:length(dum)
   sel(i) = issubfield(cfg.artfctdef, dum{i}) && issubfield(cfg.artfctdef, [dum{i} '.artifact']);
@@ -282,13 +291,13 @@ for i=1:length(dum)
   end
 end
 % update the configuration to reflect the artifacts types that were scanned
-cfg.artfctdef.type = dum(find(sel));
+cfg.artfctdef.type = dum(sel);
 
 % combine all trials into a single boolean vector
-trialall = convert_event(trl, 'boolvec');
+trialall = convert_event(trl(:,1:2), 'boolvec');
 
 % combine all artifacts into a single vector
-rejectall = zeros(1,max(trl(:,2)));
+rejectall = zeros(1, max(trl(:,2)));
 for i=1:length(cfg.artfctdef.type)
   dum = artifact{i};
   for j=1:size(dum,1)
@@ -304,14 +313,14 @@ elseif length(trialall)<length(rejectall)
 end
 
 % make header, needed only for sampling frequency
-if nargin ==1
+if hasdata
+  hdr = ft_fetch_header(data);
+else
   if isfield(cfg, 'headerformat')
     hdr = ft_read_header(cfg.headerfile, 'headerformat', cfg.headerformat);
   else
     hdr = ft_read_header(cfg.headerfile);
   end
-elseif nargin ==2
-  hdr = ft_fetch_header(data);
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -382,7 +391,7 @@ rejectall = (rejectall~=0);
 if isfield(cfg.artfctdef, 'writerej') && ~isempty(cfg.artfctdef.writerej)
   fid = fopen(cfg.artfctdef.writerej, 'w');
   if fid<0
-    error('could not open rejection file for writing');
+    ft_error('could not open rejection file for writing');
   else
     % determine the begin and end of each rejected period (in samples)
     rejectonset = find(diff([0 rejectall])== 1);
@@ -405,31 +414,39 @@ if strcmp(cfg.artfctdef.reject, 'partial') || strcmp(cfg.artfctdef.reject, 'comp
   
   count_complete_reject = 0;
   count_partial_reject  = 0;
-  count_nan = 0;
-  count_outsidecrit = 0;
+  count_nan             = 0;
+  count_outsidecrit     = 0;
   
-  trlRemovedInd = [];
-  trlPartiallyRemovedInd = [];
+  trlCompletelyRemovedInd = [];
+  trlPartiallyRemovedInd  = [];
   
   for trial=1:size(trl,1)
     % cut out the part of the rejection-axis corresponding with this trial
     rejecttrial = rejectall(trl(trial,1):trl(trial,2));
+    
     if all(not(rejecttrial))
       % the whole trial is good
       trialok = [trialok; trl(trial,:)];
+
+    elseif all(rejecttrial) && strcmp(cfg.artfctdef.reject, 'nan')
+      % the whole trial is bad, but it is requested to be replaced with nans
+      data.trial{trial}(:,rejecttrial) = nan;
+      count_nan = count_nan + 1;
+      trialok = [trialok; trl(trial,:)]; % Mark the trial as good as nothing will be removed
+    
     elseif all(rejecttrial)
       % the whole trial is bad
       count_complete_reject = count_complete_reject + 1;
-      trlRemovedInd = [trlRemovedInd trial];
-    elseif any(rejecttrial) && strcmp(cfg.artfctdef.reject, 'complete')
+      trlCompletelyRemovedInd = [trlCompletelyRemovedInd trial];
       
+    elseif any(rejecttrial) && strcmp(cfg.artfctdef.reject, 'complete')
       % some part of the trial is bad, check if within crittoilim?
       if (checkCritToi)
         critInd = (data.time{trial} >= cfg.artfctdef.crittoilim(trial,1) ...
           & data.time{trial} <= cfg.artfctdef.crittoilim(trial,2));
         if (any(critInd & rejecttrial))
           count_complete_reject = count_complete_reject + 1;
-          trlRemovedInd = [trlRemovedInd trial];
+          trlCompletelyRemovedInd = [trlCompletelyRemovedInd trial];
           continue;
         else
           trialok = [trialok; trl(trial,:)];
@@ -437,7 +454,7 @@ if strcmp(cfg.artfctdef.reject, 'partial') || strcmp(cfg.artfctdef.reject, 'comp
         end
       else % no crittoilim checking required
         count_complete_reject = count_complete_reject + 1;
-        trlRemovedInd = [trlRemovedInd trial];
+        trlCompletelyRemovedInd = [trlCompletelyRemovedInd trial];
         continue;
       end
       
@@ -455,7 +472,7 @@ if strcmp(cfg.artfctdef.reject, 'partial') || strcmp(cfg.artfctdef.reject, 'comp
         trialnew(:,i) = trl(trial,i);
       end
       minacceptnumsmp = round(cfg.artfctdef.minaccepttim .* hdr.Fs);
-      trialnew(find(trialnew(:,2)-trialnew(:,1)<minacceptnumsmp),:) = [];
+      trialnew((trialnew(:,2)-trialnew(:,1))<minacceptnumsmp,:) = [];
       count_partial_reject = count_partial_reject + 1;
       trialok = [trialok; trialnew];
       trlPartiallyRemovedInd = [trlPartiallyRemovedInd trial];
@@ -466,7 +483,7 @@ if strcmp(cfg.artfctdef.reject, 'partial') || strcmp(cfg.artfctdef.reject, 'comp
       count_nan = count_nan + 1;
       trialok = [trialok; trl(trial,:)]; % Mark the trial as good as nothing will be removed
     end
-  end
+  end % for each trial
   
   fprintf('rejected  %3d trials completely\n', count_complete_reject);
   fprintf('rejected  %3d trials partially\n', count_partial_reject);
@@ -480,7 +497,7 @@ if strcmp(cfg.artfctdef.reject, 'partial') || strcmp(cfg.artfctdef.reject, 'comp
   
   if strcmp(cfg.artfctdef.feedback, 'yes')
     fprintf('the following trials were completely removed: ');
-    for k = trlRemovedInd
+    for k = trlCompletelyRemovedInd
       fprintf('%d ', k);
     end
     fprintf('\nthe following trials were partially removed: ');
@@ -495,18 +512,17 @@ else
 end
 
 if isempty(cfg.trl)
-  error('No trials left after artifact rejection.')
+  ft_error('No trials left after artifact rejection.')
 else
   if hasdata && ~strcmp(cfg.artfctdef.reject, 'nan') % Skip this step to avoid removing parts that should be filled with nans
     % apply the updated trial definition on the data
-    tmpcfg     = [];
-    tmpcfg.trl = cfg.trl;
-    data       = ft_redefinetrial(tmpcfg, data);
-    if isfield(data, 'offset')
-      data = rmfield(data, 'offset');
-    end
+    tmpcfg      = keepfields(cfg, {'trl', 'showcallinfo'});
+    data        = removefields(data, {'trialinfo'});
+    data        = ft_redefinetrial(tmpcfg, data);
+    % restore the provenance information
+    [cfg, data] = rollback_provenance(cfg, data);
   end
-end;
+end
 
 % do the general cleanup and bookkeeping at the end of the function
 ft_postamble debug
@@ -516,8 +532,6 @@ if hasdata
   ft_postamble previous data
   ft_postamble history data
   ft_postamble savevar data
-  if nargout
-    % the output variable is called cfg instead of data
-    cfg = data;
-  end
+  % return the data, the output variable is called cfg instead of data
+  cfg = data;
 end

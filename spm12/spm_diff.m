@@ -19,12 +19,25 @@ function [varargout] = spm_diff(varargin)
 % dfdx{p}...{q} - df/dx{i}dx{j}(q)...dx{k}(p)  ; n = [i j ... k]
 %
 %
-% - a cunning recursive routine
+% This routine has the same functionality as spm_ddiff, however it
+% uses one sample point to approximate gradients with numerical (finite)
+% differences:
+%
+% dfdx  = (f(x + dx)- f(x))/dx
 %__________________________________________________________________________
 % Copyright (C) 2008 Wellcome Trust Centre for Neuroimaging
 
 % Karl Friston
-% $Id: spm_diff.m 6110 2014-07-21 09:36:13Z karl $
+% $Id: spm_diff.m 7143 2017-07-29 18:50:38Z karl $
+
+% step size for numerical derivatives
+%--------------------------------------------------------------------------
+global GLOBAL_DX
+if ~isempty(GLOBAL_DX)
+    dx = GLOBAL_DX;
+else
+    dx = exp(-8);
+end
 
 % create inline object
 %--------------------------------------------------------------------------
@@ -68,7 +81,6 @@ end
 %--------------------------------------------------------------------------
 m     = n(end);
 xm    = spm_vec(x{m});
-dx    = exp(-8);
 J     = cell(1,size(V{m},2));
 
 % proceed to derivatives
@@ -97,24 +109,18 @@ if length(n) == 1
     if isempty(xm)
         J = sparse(length(f),0);
         
-        % or there are no arguments to differentiate
-        %----------------------------------------------------------------------
+    % or there are no arguments to differentiate
+    %----------------------------------------------------------------------
     elseif isempty(f)
         J = sparse(0,length(xm));
     end
     
-    % or differentiation of a vector
+    % differentiation of a scalar or vector
     %----------------------------------------------------------------------
-    if isvector(f0) && isnumeric(f0) && q
-        
-        % concatenate into a matrix
-        %------------------------------------------------------------------
-        if size(f0,2) == 1
-            J = spm_cat(J);
-        else
-            J = spm_cat(J')';
-        end
+    if isnumeric(f0) && iscell(J) && q
+        J = spm_dfdx_cat(J);
     end
+    
     
     % assign output argument and return
     %----------------------------------------------------------------------
@@ -127,6 +133,7 @@ else
     %----------------------------------------------------------------------
     f0        = cell(1,length(n));
     [f0{:}]   = spm_diff(f,x{:},n(1:end - 1),V);
+    p         = true;
     
     for i = 1:length(J)
         xi    = x;
@@ -134,6 +141,13 @@ else
         xi{m} = spm_unvec(xmi,x{m});
         fi    = spm_diff(f,xi{:},n(1:end - 1),V);
         J{i}  = spm_dfdx(fi,f0{1},dx);
+        p     = p & isnumeric(J{i});
+    end
+    
+    % or differentiation of a scalar or vector
+    %----------------------------------------------------------------------
+    if p && q
+        J = spm_dfdx_cat(J);
     end
     varargout = [{J} f0];
 end
@@ -141,7 +155,7 @@ end
 
 function dfdx = spm_dfdx(f,f0,dx)
 % cell subtraction
-%--------------------------------------------------------------------------
+%__________________________________________________________________________
 if iscell(f)
     dfdx  = f;
     for i = 1:length(f(:))
@@ -152,4 +166,18 @@ elseif isstruct(f)
 else
     dfdx  = (f - f0)/dx;
 end
+
+return
+
+function J = spm_dfdx_cat(J)
+% concatenate into a matrix
+%--------------------------------------------------------------------------
+if isvector(J{1})
+    if size(J{1},2) == 1
+        J = spm_cat(J);
+    else
+        J = spm_cat(J')';
+    end
+end
+
 

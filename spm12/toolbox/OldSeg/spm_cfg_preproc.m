@@ -1,9 +1,9 @@
 function preproc = spm_cfg_preproc
 % SPM Configuration file for toolbox 'Old Segment'
 %______________________________________________________________________
-% Copyright (C) 2005-2012 Wellcome Trust Centre for Neuroimaging
+% Copyright (C) 2005-2016 Wellcome Trust Centre for Neuroimaging
 
-% $Id: spm_cfg_preproc.m 4900 2012-09-05 14:06:50Z john $
+% $Id: spm_cfg_preproc.m 6942 2016-11-21 13:17:44Z guillaume $
 
 if ~isdeployed, addpath(fullfile(spm('dir'),'toolbox','OldSeg')); end
 
@@ -97,7 +97,7 @@ cleanup         = cfg_menu;
 cleanup.tag     = 'cleanup';
 cleanup.name    = 'Clean up any partitions';
 cleanup.help    = {
-                   'This uses a crude routine for extracting the brain from segmentedimages.  It begins by taking the white matter, and eroding it acouple of times to get rid of any odd voxels.  The algorithmcontinues on to do conditional dilations for several iterations,where the condition is based upon gray or white matter being present.This identified region is then used to clean up the grey and whitematter partitions, and has a slight influences on the CSF partition.'
+                   'This uses a crude routine for extracting the brain from segmented images.  It begins by taking the white matter, and eroding it acouple of times to get rid of any odd voxels.  The algorithm continues on to do conditional dilations for several iterations, where the condition is based upon gray or white matter being present. This identified region is then used to clean up the grey and white matter partitions, and has a slight influences on the CSF partition.'
                    ''
                    'If you find pieces of brain being chopped out in your data, then you may wish to disable or tone down the cleanup procedure.'
 }';
@@ -275,9 +275,9 @@ samp.def     = @(val)spm_get_defaults('old.preproc.samp', val{:});
 msk         = cfg_files;
 msk.tag     = 'msk';
 msk.name    = 'Masking image';
-msk.val{1} = {''};
+msk.val     = {{''}};
 msk.help    = {'The segmentation can be masked by an image that conforms to the same space as the images to be segmented.  If an image is selected, then it must match the image(s) voxel-for voxel, and have the same voxel-to-world mapping.  Regions containing a value of zero in this image do not contribute when estimating the various parameters. '};
-msk.filter = 'image';
+msk.filter  = 'image';
 msk.ufilter = '.*';
 msk.num     = [0 1];
 % ---------------------------------------------------------------------

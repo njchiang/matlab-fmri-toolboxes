@@ -4,16 +4,18 @@ function [val, status] = ft_findcfg(cfg, var)
 % or in the nested previous cfgs
 %
 % Use as
-%   [val] = ft_findcfg(cfg, var)
+%   val = ft_findcfg(cfg, var)
 % where the name of the variable should be specified as string.
 %
 % e.g.
 %   trl   = ft_findcfg(cfg, 'trl')
 %   event = ft_findcfg(cfg, 'event')
+%
+% See also FT_GETOPT, FT_CFG2KEYVAL
 
 % Copyright (C) 2006, Robert Oostenveld
 %
-% This file is part of FieldTrip, see http://www.ru.nl/neuroimaging/fieldtrip
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
 % for the documentation and details.
 %
 %    FieldTrip is free software: you can redistribute it and/or modify
@@ -29,7 +31,7 @@ function [val, status] = ft_findcfg(cfg, var)
 %    You should have received a copy of the GNU General Public License
 %    along with FieldTrip. If not, see <http://www.gnu.org/licenses/>.
 %
-% $Id: ft_findcfg.m 9791 2014-09-11 09:50:13Z jansch $
+% $Id$
 
 % if var(1)~='.'
 %   var = ['.' var];
@@ -46,11 +48,11 @@ while ~status
       status = 1;
     elseif issubfield(cfg, 'previous');
       [val, status] = ft_findcfg(cfg.previous, var);
-      if status, break; end;
+      if status, break; end
     elseif iscell(cfg)
       for i=1:length(cfg)
         [val, status] = ft_findcfg(cfg{i}, var);
-        if status, break; end;
+        if status, break; end
       end
     else
       status = -1;
@@ -61,4 +63,3 @@ while ~status
     break
   end
 end
-

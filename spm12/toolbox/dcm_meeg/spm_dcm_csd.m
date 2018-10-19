@@ -41,7 +41,7 @@ function DCM = spm_dcm_csd(DCM)
 % Copyright (C) 2008 Wellcome Trust Centre for Neuroimaging
  
 % Karl Friston
-% $Id: spm_dcm_csd.m 5975 2014-05-07 18:07:42Z karl $
+% $Id: spm_dcm_csd.m 7002 2017-02-02 18:22:04Z karl $
  
  
 % check options
@@ -90,7 +90,7 @@ if isempty(DCM.xU.X),    DCM.C    = sparse(Ns,0); end
 % check to see if neuronal priors have already been specified
 %--------------------------------------------------------------------------
 try
-    if length(spm_vec(DCM.M.pE)) == length(spm_vec(pE));
+    if spm_length(DCM.M.pE) == spm_length(pE);
         pE = DCM.M.pE;
         pC = DCM.M.pC;
         fprintf('Using existing priors\n')
@@ -104,6 +104,14 @@ end
 % augment with priors on endogenous inputs (neuronal) and noise
 %--------------------------------------------------------------------------
 [pE,pC]  = spm_ssr_priors(pE,pC);
+
+try
+    if spm_length(DCM.M.pE) == spm_length(pE);
+        pE = DCM.M.pE;
+        pC = DCM.M.pC;
+        fprintf('Using existing priors\n')
+    end
+end
  
 % initial states and equations of motion
 %--------------------------------------------------------------------------
@@ -160,10 +168,8 @@ DCM.M.dt = DCM.xY.dt;
 %--------------------------------------------------------------------------
 y     = spm_fs_csd(DCM.xY.y,DCM.M);
 for i = 1:length(y)
-    n      = size(y{i},1);
-    m      = size(y{i},2)*size(y{i},3);
-    q      = spm_Q(1/2,n,1);
-    Q{i,i} = kron(speye(m,m),q);
+    m      = spm_length(y{i});
+    Q{i,i} = speye(m,m);
 end
 DCM.xY.Q  = spm_cat(Q);
 DCM.xY.X0 = sparse(size(Q,1),0);

@@ -6,20 +6,19 @@ function ret = spm_ov_movie(varargin)
 % resp., it is possible to define custom start and end points (in mm) for
 % oblique trajectories.
 %
-% Displayed movies can be captured and saved using MATLABs getframe and
-% movie2avi commands. One movie per image and axis (i.e. slice display)
-% will be created. Movie resolution is given by the displayed image size,
-% frame rate is MATLAB standard.
+% Displayed movies can be captured and saved as video files. One movie per
+% image and axis (i.e. slice display) will be created. Movie resolution is
+% given by the displayed image size, frame rate is MATLAB standard.
 %
 % This routine is a plugin to spm_orthviews. For general help about
 % spm_orthviews and plugins type
 %             help spm_orthviews
 % at the MATLAB prompt.
 %__________________________________________________________________________
-% Copyright (C) 2012 Wellcome Trust Centre for Neuroimaging
+% Copyright (C) 2012-2017 Wellcome Trust Centre for Neuroimaging
 
 % Volkmar Glauche
-% $Id: spm_ov_movie.m 4996 2012-10-11 18:28:37Z guillaume $
+% $Id: spm_ov_movie.m 7111 2017-06-16 09:01:09Z guillaume $
 
 global st;
 if isempty(st)
@@ -37,7 +36,7 @@ switch cmd
     
     % Context menu and callbacks
     case 'context_menu'
-        item0 = uimenu(varargin{3}, 'Label', 'Movie tool');
+        item0 = uimenu(varargin{3}, 'Label', 'Movie');
         item1 = uimenu(item0, 'Label', 'Run', 'Callback', ...
             sprintf('%s(''context_init'', %d);', mfilename, volhandle), ...
             'Tag', ['MOVIE_0_', num2str(volhandle)]);
@@ -62,7 +61,7 @@ switch cmd
                 num2str(bb(dir,:), '%.1f %.1f'), 2);
             mstart(dir)=tmp(1);
             mend(dir)=tmp(2);
-        end;
+        end
         ds=spm_input('Step size (mm)', '!+1', 'e', '1', 1);
         d=mend-mstart;
         l=sqrt(d'*d);
@@ -77,46 +76,50 @@ switch cmd
             prefix = spm_input('Filename prefix','!+1', 's', ...
                 'movie');
             if domovie == 2
-                if ispc
-                    comp = spm_input('Compression', '!+1', 'm', ...
-                        {'None','Indeo3', 'Indeo5', 'Cinepak', 'MSVC'}, ...
-                        {'None','Indeo3', 'Indeo5', 'Cinepak', 'MSVC'});
-                else
-                    comp = 'None';
-                end
+                comp = spm_input('Compression', '!+1', 'm', ...
+                    {'Motion JPEG AVI', 'Motion JPEG 2000 file with lossless compression', 'Motion JPEG 2000', 'MPEG-4', 'Uncompressed AVI'}, ...
+                    {'Motion JPEG AVI', 'Archival', 'Motion JPEG 2000', 'MPEG-4', 'Uncompressed AVI'});
             end
         else
             vh = [];
-        end;
+        end
         for k=1:numel(steps)
             spm_orthviews('reposition', mstart+steps(k)*d);
             for ci = 1:numel(vh)
                 for ca = 1:3
                     M{ci,ca}(k) = getframe(st.vols{vh(ci)}.ax{ca}.ax);
-                end;
-            end;
-        end;
+                end
+            end
+        end
         spm('pointer', 'watch');
         for ci = 1:numel(vh)
             for ca = 1:3
                 if domovie == 1
                     for cf = 1:numel(M{ci,ca})
-                        fname = sprintf('%s-%02d-%1d-%03d.png',prefix,vh(ci),ca, ...
-                            cf);
+                        fname = sprintf('%s-%02d-%1d-%03d.png',prefix,vh(ci),ca,cf);
                         imwrite(frame2im(M{ci,ca}(cf)), fname, 'png');
-                    end;
+                    end
                 elseif domovie == 2
                     fname = sprintf('%s-%02d-%1d.avi',prefix,vh(ci),ca);
-                    movie2avi(M{ci,ca},fname, 'compression',comp);
-                end;
-            end;
-        end;
+                    if spm_check_version('matlab','7.10') > 0
+                        writerObj = VideoWriter(fname,char(comp));
+                        open(writerObj);
+                        writeVideo(writerObj,M{ci,ca});
+                        close(writerObj);
+                        fname = writerObj.Filename;
+                    else
+                        movie2avi(M{ci,ca},fname, 'compression','None'); %#ok
+                    end
+                    if ispc, cmd = 'winopen(''%s'')'; else, cmd = 'open(''%s'')'; end
+                    fprintf('Movie saved in %s\n',spm_file(fname,'link',cmd));
+                end
+            end
+        end
         spm('pointer', 'arrow');
         spm_orthviews('reposition', opos);
         spm_input('!DeleteInputObj',Finter);
     otherwise
         fprintf('spm_orthviews(''movie'', ...): Unknown action %s', cmd);
-end;
-
+end
 
 spm('pointer','arrow');

@@ -1,7 +1,8 @@
+#include <stdio.h>
 #include <math.h>
 #include <string.h>
 #include "mex.h"
-#include "matrix.h"
+#include <stdio.h>
 
 /*
  * Copyright (C) 2008, Robert Oostenveld, F.C. Donders Ccentre for Cognitive Neuroimaging
@@ -22,7 +23,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  *
- * $Id: read_16bit.c 7123 2012-12-06 21:21:38Z roboos $
+ * $Id$
  */
 
 void

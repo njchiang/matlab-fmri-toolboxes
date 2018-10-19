@@ -1,9 +1,11 @@
-function [y] = spm_int_L(P,M,U)
-% integrates a MIMO nonlinear system using a fixed Jacobian: J(x(0))
-% FORMAT [y] = spm_int_L(P,M,U)
+function [y] = spm_int_L(P,M,U,N)
+% Integrate a MIMO nonlinear system using a fixed Jacobian: J(x(0))
+% FORMAT [y] = spm_int_L(P,M,U,[N])
 % P   - model parameters
 % M   - model structure
 % U   - input structure or matrix
+%
+% N   - number of local linear iterations per time step [default: 1]
 %
 % y   - (v x l)  response y = g(x,u,P)
 %__________________________________________________________________________
@@ -20,7 +22,7 @@ function [y] = spm_int_L(P,M,U)
 %            J = df/dx
 %
 % at input times.  This integration scheme evaluates the update matrix (U)
-% at the expansion point
+% at the expansion point.
 %
 %--------------------------------------------------------------------------
 %
@@ -55,16 +57,17 @@ function [y] = spm_int_L(P,M,U)
 % sparse sampling of the solution and delays in observing outputs. It is
 % used primarily for integrating fMRI models
 %__________________________________________________________________________
-% Copyright (C) 2008 Wellcome Trust Centre for Neuroimaging
+% Copyright (C) 2008-2016 Wellcome Trust Centre for Neuroimaging
  
 % Karl Friston
-% $Id: spm_int_L.m 6110 2014-07-21 09:36:13Z karl $
+% $Id: spm_int_L.m 7143 2017-07-29 18:50:38Z karl $
  
  
 % convert U to U.u if necessary
 %--------------------------------------------------------------------------
 if ~isstruct(U), u.u = U; U = u;   end
 try, dt = U.dt;  catch, dt = 1;    end
+if nargin < 4; N = 1;              end
 
 % Initial states and inputs
 %--------------------------------------------------------------------------
@@ -89,36 +92,39 @@ catch
     f   = @(x,u,P,M) sparse(0,1);
     M.n = 0;
     M.x = sparse(0,0);
-    M.f = f;
 end
-
+M.f = f;
  
 % output nonlinearity, if specified
 %--------------------------------------------------------------------------
 try
-    g   = spm_funcheck(M.g);
+    g = spm_funcheck(M.g);
+    if isempty(g)
+        g  = @(x,u,P,M) x;
+    end
 catch
-    g   = @(x,u,P,M) x;
-    M.g = g;
+    g = @(x,u,P,M) x;
 end
+M.g = g;
 
-
-% dx(t)/dt and Jacobian df/dx and check for delay operator
+% dx(t)/dt and Jacobian df/dx (and check for delay operator)
 %--------------------------------------------------------------------------
-D    = 1;
+D   = 1;
+n   = spm_length(x);
 if nargout(f) >= 3
-    [fx, dfdx,D] = f(x,u,P,M);
+    [fx,dfdx,D] = f(x,u,P,M);
     
 elseif nargout(f) == 2
-    [fx, dfdx]   = f(x,u,P,M);
+    [fx,dfdx]   = f(x,u,P,M);
     
 else
-    dfdx         = spm_cat(spm_diff(f,x,u,P,M,1)); 
+    dfdx = spm_cat(spm_diff(f,x,u,P,M,1)); 
 end
-p     = max(abs(real(eig(full(dfdx)))));
-N     = ceil(max(1,dt*p*2));
-n     = spm_length(x);
-Q     = (spm_expm(dt*D*dfdx/N) - speye(n,n))*spm_inv(dfdx);
+
+% local linear update operator Q = (expm(dt*J) - I)*inv(J)
+%--------------------------------------------------------------------------
+dfdx  = dfdx - speye(n,n)*exp(-16);
+Q     = (spm_expm(dt*D*dfdx/N) - speye(n,n))/dfdx;
  
 % integrate
 %==========================================================================

@@ -1,7 +1,8 @@
 function fieldtrip2fiff(filename, data)
 
 % FIELDTRIP2FIFF saves a FieldTrip raw data structure as a fiff-file, allowing it
-% to be further analyzed by the Neuromag software, or in the MNE suite software.
+% to be further analyzed by the Elekta/Neuromag software, or in the MNE suite
+% software.
 %
 % Use as
 %   fieldtrip2fiff(filename, data)
@@ -21,7 +22,7 @@ function fieldtrip2fiff(filename, data)
 
 % Copyright (C) 2012-2013, Jan-Mathijs Schoffelen, Gio Piantoni
 %
-% This file is part of FieldTrip, see http://www.ru.nl/neuroimaging/fieldtrip
+% This file is part of FieldTrip, see http://www.fieldtriptoolbox.org
 % for the documentation and details.
 %
 %    FieldTrip is free software: you can redistribute it and/or modify
@@ -37,7 +38,7 @@ function fieldtrip2fiff(filename, data)
 %    You should have received a copy of the GNU General Public License
 %    along with FieldTrip. If not, see <http://www.gnu.org/licenses/>.
 %
-% $Id: fieldtrip2fiff.m 9521 2014-05-14 09:45:42Z roboos $
+% $Id$
 
 % this ensures that the path is correct and that the ft_defaults global variable is available
 ft_defaults
@@ -45,10 +46,10 @@ ft_defaults
 % ensure that the filename has the correct extension
 [pathstr, name, ext] = fileparts(filename);
 if ~strcmp(ext, '.fif')
-  error('if the filename is specified with extension, this should read .fif');
+  ft_error('if the filename is specified with extension, this should read .fif');
 end
-fifffile = [pathstr filesep name '.fif'];
-eventfile = [pathstr filesep name '-eve.fif'];
+fifffile = fullfile(pathstr ,[name '.fif']);
+eventfile = fullfile(pathstr ,[name '-eve.fif']);
 
 % ensure the mne-toolbox to be on the path
 ft_hastoolbox('mne', 1);
@@ -139,7 +140,7 @@ if israw
   
 elseif isepch
   
-  error('fieldtrip2fiff:NotImplementedError', 'Function to write epochs to MNE not implemented yet')
+  ft_error('writing epochs to MNE is not implemented yet')
   
   for j = 1:length(data.trial)
     evoked(j).aspect_kind = 100;

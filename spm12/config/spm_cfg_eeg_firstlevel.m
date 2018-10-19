@@ -3,9 +3,9 @@ function convmodel = spm_cfg_eeg_firstlevel
 %_______________________________________________________________________
 % Copyright (C) 2013 Wellcome Trust Centre for Neuroimaging
 
-% $Id: spm_cfg_eeg_firstlevel.m 6089 2014-07-04 11:07:46Z vladimir $
+% $Id: spm_cfg_eeg_firstlevel.m 6929 2016-11-14 13:07:31Z guillaume $
 
-rev = '$Rev: 6089 $';
+rev = '$Rev: 6929 $';
 
 % ---------------------------------------------------------------------
 % units Units for design
@@ -39,7 +39,7 @@ utime.tag     = 'utime';
 utime.name    = 'Microtime resolution';
 utime.help    = {
                   'The microtime resolution, t, is the number of time-bins per input sample used when building regressors. '
-                  'Can be modified to make the output up- or downsampled with respect to the input'
+                  'Can be modified to make the output up- or downsampled with respect to the input.'
 }';
 utime.strtype = 'r';
 utime.num     = [1 1];
@@ -52,6 +52,7 @@ timing         = cfg_branch;
 timing.tag     = 'timing';
 timing.name    = 'Timing parameters';
 timing.val     = {timewin units utime};
+timing.help    = {'Timing parameters'};
 
 % ---------------------------------------------------------------------
 % D M/EEG datasets
@@ -62,7 +63,7 @@ D.tag = 'D';
 D.name = 'M/EEG dataset';
 D.filter = 'mat';
 D.num = [1 1];
-D.help = {'Select the M/EEG mat file'};
+D.help = {'Select the M/EEG mat file.'};
 
 % ---------------------------------------------------------------------
 % name Name
@@ -70,7 +71,7 @@ D.help = {'Select the M/EEG mat file'};
 name         = cfg_entry;
 name.tag     = 'name';
 name.name    = 'Name';
-name.help    = {'Condition Name'};
+name.help    = {'Condition Name.'};
 name.strtype = 's';
 name.num     = [1 Inf];
 % ---------------------------------------------------------------------
@@ -100,16 +101,19 @@ manual         = cfg_branch;
 manual.tag     = 'manual';
 manual.name    = 'Specify manually';
 manual.val     = {onset duration};
+manual.help    = {''};
 
 eventtype         = cfg_entry;
 eventtype.tag     = 'eventtype';
 eventtype.name    = 'Event type';
 eventtype.strtype = 's';
+eventtype.help    = {''};
 
 eventvalue         = cfg_entry;
 eventvalue.tag     = 'eventvalue';
 eventvalue.name    = 'Event value';
-eventvalue.strtype = 'e';
+eventvalue.strtype = 'r';
+eventvalue.help    = {''};
 
 trlshift         = cfg_entry;
 trlshift.tag     = 'trlshift';
@@ -124,6 +128,7 @@ event      = cfg_branch;
 event.tag  = 'event';
 event.name = 'Event';
 event.val  = {eventtype eventvalue trlshift};
+event.help = {''};
 
 % ---------------------------------------------------------------------
 % 
@@ -133,6 +138,8 @@ fromdata.tag     = 'fromdata';
 fromdata.name    = 'Take from dataset';
 fromdata.values  = {event};
 fromdata.num     = [1 Inf];
+fromdata.help    = {''};
+
 % ---------------------------------------------------------------------
 % bases How to define events
 % ---------------------------------------------------------------------
@@ -253,13 +260,13 @@ generic1.num     = [0 Inf];
 multi         = cfg_files;
 multi.tag     = 'multi';
 multi.name    = 'Multiple conditions';
-multi.val{1} = {''};
+multi.val     = {{''}};
 multi.help    = {
                  'Select the *.mat file containing details of your multiple experimental conditions. '
                  ''
                  'If you have multiple conditions then entering the details a condition at a time is very inefficient. This option can be used to load all the required information in one go. You will first need to create a *.mat file containing the relevant information. '
                  ''
-                 'This *.mat file must include the following cell arrays (each 1 x n): names, onsets and durations. eg. names=cell(1,5), onsets=cell(1,5), durations=cell(1,5), then names{2}=''SSent-DSpeak'', onsets{2}=[3 5 19 222], durations{2}=[0 0 0 0], contain the required details of the second condition. These cell arrays may be made available by your stimulus delivery program, eg. COGENT. The duration vectors can contain a single entry if the durations are identical for all events.'
+                 'This *.mat file must include the following cell arrays (each 1 x n): names, onsets and durations. eg. names=cell(1,5), onsets=cell(1,5), durations=cell(1,5), then names{2}=''SSent-DSpeak'', onsets{2}=[3 5 19 222], durations{2}=[0 0 0 0], contain the required details of the second condition. These cell arrays may be made available by your stimulus delivery program, eg. COGENT. The duration vectors can contain a single entry if the durations are identical for all events. Optionally, a (1 x n) cell array named orth can also be included, with a 1 or 0 for each condition to indicate whether parameteric modulators should be orthogonalised.'
                  ''
                  'Time and Parametric effects can also be included. For time modulation include a cell array (1 x n) called tmod. It should have a have a single number in each cell. Unused cells may contain either a 0 or be left empty. The number specifies the order of time modulation from 0 = No Time Modulation to 6 = 6th Order Time Modulation. eg. tmod{3} = 1, modulates the 3rd condition by a linear time effect.'
                  ''
@@ -328,7 +335,7 @@ generic3.num     = [0 Inf];
 multi_conv_reg         = cfg_files;
 multi_conv_reg.tag     = 'multi_conv_reg';
 multi_conv_reg.name    = 'Multiple convolution regressors';
-multi_conv_reg.val{1} = {''};
+multi_conv_reg.val     = {{''}};
 multi_conv_reg.help    = {
                      'Select the *.mat/*.txt file containing details of your multiple regressors. '
                      ''
@@ -362,7 +369,7 @@ generic2.num     = [0 Inf];
 multi_reg         = cfg_files;
 multi_reg.tag     = 'multi_reg';
 multi_reg.name    = 'Multiple regressors';
-multi_reg.val{1} = {''};
+multi_reg.val     = {{''}};
 multi_reg.help    = {
                      'Select the *.mat/*.txt file containing details of your multiple regressors. '
                      ''
@@ -496,12 +503,13 @@ prefix.num     = [1 Inf];
 prefix.val     = {'C'};
 
 % ---------------------------------------------------------------------
-% eeg_design MEEG model specification 
+% convmodel M/EEG convolution modelling
 % ---------------------------------------------------------------------
-convmodel         = cfg_exbranch;
-convmodel.tag     = 'convmodel';
-convmodel.name    = 'Convolution modelling';
-convmodel.val     = {spm_cfg_eeg_channel_selector timing sess bases volt, prefix};
+convmodel      = cfg_exbranch;
+convmodel.tag  = 'convmodel';
+convmodel.name = 'Convolution modelling';
+convmodel.val  = {spm_cfg_eeg_channel_selector timing sess bases volt, prefix};
+convmodel.help = {'M/EEG convolution modelling'};
 convmodel.prog = @eeg_run;
 convmodel.vout = @vout_eeg;
 convmodel.modality = {'EEG'};

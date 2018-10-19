@@ -17,16 +17,16 @@ function D = spm_eeg_prep(S)
 % Copyright (C) 2008-2012 Wellcome Trust Centre for Neuroimaging
 
 % Vladimir Litvak
-% $Id: spm_eeg_prep.m 6194 2014-09-24 12:47:55Z vladimir $
+% $Id: spm_eeg_prep.m 7175 2017-09-26 14:50:54Z vladimir $
 
 D = spm_eeg_load(S.D);
 
 switch lower(S.task)
-        %----------------------------------------------------------------------
+    %----------------------------------------------------------------------
     case 'setbadchan'
         %----------------------------------------------------------------------
-        D = badchannels(D, D.selectchannels(S.channels), S.status);        
-    %----------------------------------------------------------------------
+        D = badchannels(D, D.selectchannels(S.channels), S.status);
+        %----------------------------------------------------------------------
     case 'settype'
         %----------------------------------------------------------------------
         D = chantype(D, S.ind, S.type);
@@ -78,8 +78,52 @@ switch lower(S.task)
         D = chantype(D, ind, spmtype);
         
         %----------------------------------------------------------------------
+        
+    case 'bidschantype'
+        
+        dictionary = { % Should be updates with updates to BIDS specification
+            'MEGMAG'   'MEGMAG'
+            'MEGGRAD'  'MEGPLANAR'
+            'MEG'      'MEG'
+            'MEGREF'   'REF'
+            'EEG'      'EEG'
+            'EOG'      'EOG'
+            'ECG'      'ECG'
+            'EMG'      'EMG'
+            'TRIG'     'Other'
+            'AUDIO'    'Other'
+            'PD'       'Other'
+            'ET'       'Other'
+            'MISC'     'Other'
+            };
+        
+        bids_chan = spm_load(S.filename);
+        
+        [sel1, sel2] = spm_match_str(D.chanlabels, bids_chan.name);
+        
+        type = bids_chan.type(sel2);
+                              
+        [sel3, sel4] = spm_match_str(type, dictionary(:, 1));
+        
+        type(sel3) = dictionary(sel4, 2);
+        
+        D = chantype(D, sel1, type);  
+        
+    case 'bidschanstatus'
+        bids_chan = spm_load(S.filename);
+        
+        [sel1, sel2] = spm_match_str(D.chanlabels, bids_chan.name);
+        
+        sel3 = strmatch('bad', bids_chan.status(sel2));
+        
+        D = badchannels(D, sel1, 0);
+        
+        D = badchannels(D, sel1(sel3), 1);
+        
     case {'loadtemplate', 'setcoor2d', 'project3d'}
         %----------------------------------------------------------------------
+        chanind = 1:D.nchannels;
+        
         switch lower(S.task)
             case 'loadtemplate'
                 template    = load(S.P); % must contain Cpos, Cnames
@@ -100,6 +144,15 @@ switch lower(S.task)
                     sens    = D.sensors(S.modality);
                 end
                 [xy, label] = spm_eeg_project3D(sens, S.modality);
+                
+                switch S.modality
+                    case 'EEG'
+                        chanind  = D.indchantype('EEG');
+                    case 'MEG'
+                        chanind  = D.indchantype('MEGANY');
+                    case 'MEGCOMB'
+                        chanind  = D.indchantype('MEGCOMB');
+                end
         end
         
         megcombind   = D.indchantype('MEGCOMB');
@@ -116,7 +169,8 @@ switch lower(S.task)
             xy    = [xy 0.5*(xy(:, sel2(sel6)) + xy(:, sel4(sel7)))];
         end
         
-        [sel1, sel2] = spm_match_str(lower(D.chanlabels), lower(label));
+        [sel1, sel2] = spm_match_str(lower(D.chanlabels(chanind)), lower(label));
+        sel1         = chanind(sel1);        
         
         if ~isempty(sel1)
             
@@ -193,6 +247,8 @@ switch lower(S.task)
                 hspind = strmatch('headshape', elec.label);
                 elec.chanpos(hspind, :) = [];
                 elec.elecpos(hspind, :) = [];
+                elec.chantype(hspind, :) = [];
+                elec.chanunit(hspind, :) = [];
                 elec.label(hspind)  = [];
                 
                 % This handles FIL Polhemus case and other possible cases
@@ -206,7 +262,7 @@ switch lower(S.task)
                     end
                 end
                 
-                shape = ft_read_headshape(S.sensfile);
+                shape = spm_eeg_fixpnt(ft_read_headshape(S.sensfile));
                 
                 % In case electrode file is used for fiducials, the
                 % electrodes can be used as headshape
@@ -247,25 +303,25 @@ switch lower(S.task)
             ind = strmatch([ft_senstype(D.chanlabels(D.indchantype('EEG'))) '.sfp'], template_sfp, 'exact');
         end
         
-        if ~isempty(ind)            
+        if ~isempty(ind)
             fid = D.fiducials;
             
-            if isequal(D.modality(1, 0), 'Multimodal') && ~isempty(fid)                
+            if isequal(D.modality(1, 0), 'Multimodal') && ~isempty(fid)
                 
                 nzlbl = {'fidnz', 'nz', 'nas', 'nasion', 'spmnas'};
                 lelbl = {'fidle', 'fidt9', 'lpa', 'lear', 'earl', 'le', 'l', 't9', 'spmlpa'};
                 relbl = {'fidre', 'fidt10', 'rpa', 'rear', 'earr', 're', 'r', 't10', 'spmrpa'};
                 
-                [sel1, nzind] = spm_match_str(nzlbl, lower(fid.fid.label)); 
-                 if ~isempty(nzind)                   
+                [sel1, nzind] = spm_match_str(nzlbl, lower(fid.fid.label));
+                if ~isempty(nzind)
                     nzind = nzind(1);
                 end
                 [sel1, leind] = spm_match_str(lelbl, lower(fid.fid.label));
-                 if ~isempty(leind)                   
+                if ~isempty(leind)
                     leind = leind(1);
-                 end               
+                end
                 [sel1, reind] = spm_match_str(relbl, lower(fid.fid.label));
-                if ~isempty(reind)                 
+                if ~isempty(reind)
                     reind = reind(1);
                 end
                 
@@ -284,14 +340,17 @@ switch lower(S.task)
                 S1.sensfile = fullfile(spm('dir'), 'EEGtemplates', template_sfp{ind});
                 S1.updatehistory = 0;
                 D = spm_eeg_prep(S1);
-            else                
+            else
                 elec = ft_read_sens(fullfile(spm('dir'), 'EEGtemplates', template_sfp{ind}));
                 
                 [sel1, sel2] = spm_match_str(lower(D.chanlabels), lower(elec.label));
                 
                 sens = elec;
-                sens.chanpos = sens.chanpos(sel2, :);
-                sens.elecpos = sens.elecpos(sel2, :);
+                sens.chanpos  = sens.chanpos(sel2, :);
+                sens.elecpos  = sens.elecpos(sel2, :);
+                sens.chantype = sens.chantype(sel2, :);
+                sens.chanunit = sens.chanunit(sel2, :);
+                
                 % This takes care of possible case mismatch
                 sens.label = D.chanlabels(sel1);
                 
@@ -338,8 +397,8 @@ switch lower(S.task)
         
         %----------------------------------------------------------------------
     case 'loadmegsens'
-        %----------------------------------------------------------------------        
-        hdr  = ft_read_header(S.source);        
+        %----------------------------------------------------------------------
+        hdr  = ft_read_header(S.source);
         D = sensors(D, 'MEG', hdr.grad);
         D = fiducials(D, ft_convert_units(ft_read_headshape(S.source), 'mm'));
         
@@ -353,10 +412,10 @@ switch lower(S.task)
             
             D = spm_eeg_prep(S1);
         end
-                
+        
         %----------------------------------------------------------------------
     case 'sens2chan'
-        %----------------------------------------------------------------------        
+        %----------------------------------------------------------------------
         if isfield(S, 'montage')
             montage = S.montage;
             if ischar(montage)
@@ -382,7 +441,7 @@ switch lower(S.task)
         else
             error('Montage or list of reference sensors should be specified');
         end
-                       
+        
         modalities = {'EEG', 'MEG'};
         for m = 1:numel(modalities)
             sens = sensors(D, modalities{m});
@@ -422,7 +481,7 @@ switch lower(S.task)
                     shape.pnt = [];
                 end
             otherwise
-                shape = ft_read_headshape(S.headshapefile);
+                shape = spm_eeg_fixpnt(ft_read_headshape(S.headshapefile));
                 
                 % In case electrode file is used for fiducials, the
                 % electrodes can be used as headshape
@@ -462,15 +521,33 @@ switch lower(S.task)
         D = spm_eeg_inv_mesh_ui(D, val, 1, Msize);
         D = spm_eeg_inv_datareg_ui(D, val);
         
-    case 'sortconditions'    
+    case 'sortconditions'
         if ischar(S.condlist)
             cl = getfield(load(S.condlist), 'condlist');
         else
             cl = S.condlist;
         end
         
-        D = condlist(D, cl);        
+        D = condlist(D, cl);
         %----------------------------------------------------------------------
+    case 'loadbidsevents'
+        if ~isequal(D.type, 'continuous')
+            error('This operation can only be applied to continuous datasets');
+        end
+        
+        ev_bids = spm_load(S.filename);
+        
+        ev_spm = struct('type', repmat({'BIDS'}, length(ev_bids.onset), 1), 'value', ev_bids.stim_type,...
+            'time', num2cell(ev_bids.onset), 'duration', num2cell(ev_bids.duration));
+        
+        if S.replace
+            D = events(D, 1, ev_spm);
+        else
+            D = events(D, 1, spm_cat_struct(D.events(1), ev_spm));
+        end
+        
+        D = D.check;
+        
     otherwise
         %----------------------------------------------------------------------
         fprintf('Unknown task ''%s'' to perform: Nothing done.\n',S.task);

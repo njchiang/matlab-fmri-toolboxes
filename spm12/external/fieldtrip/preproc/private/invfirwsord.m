@@ -50,7 +50,7 @@
 % along with this program; if not, write to the Free Software
 % Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 %
-% $Id: invfirwsord.m 9825 2014-09-22 15:19:53Z roboos $
+% $Id$
 
 function [ df, dev ] = invfirwsord(wintype, fs, m, dev)
 
@@ -60,18 +60,18 @@ winDevArray = [0.089 0.056 0.0063 0.0022 0.0002];
 
 % Check arguments
 if nargin < 3 || isempty(fs) || isempty(m) || isempty(wintype)
-    error('Not enough input arguments.')
+    ft_error('Not enough input arguments.')
 end
 
 % Window type
 wintype = find(strcmp(wintype, winTypeArray));
 if isempty(wintype)
-    error('Unknown window type.')
+    ft_error('Unknown window type.')
 end
 
 if wintype == 6 % Kaiser window
     if nargin < 4 || isempty(dev)
-        error('Not enough input arguments.')
+        ft_error('Not enough input arguments.')
     end
     devdb = -20 * log10(dev);
     df = (devdb - 8) / (2.285 * 2 * pi * (m - 1));

@@ -2,8 +2,8 @@ function [y] = spm_gx_hdm(x,u,P,M)
 % Simulated BOLD response to input.
 % FORMAT [y] = spm_gx_hdm(x,u,P,M)
 % y    - BOLD response (%)
-% x    - state vector     (see spm_fx_dcm)
-% P    - Parameter vector (see spm_fx_dcm)
+% x    - state vector     (see spm_fx_fmri)
+% P    - Parameter vector (see spm_fx_fmri)
 %__________________________________________________________________________
 %
 % This function implements the BOLD signal model described in: 
@@ -14,11 +14,30 @@ function [y] = spm_gx_hdm(x,u,P,M)
 % Copyright (C) 2008 Wellcome Trust Centre for Neuroimaging
  
 % Karl Friston & Klaas Enno Stephan
-% $Id: spm_gx_hdm.m 3812 2010-04-07 16:52:05Z karl $
+% $Id: spm_gx_hdm.m 6856 2016-08-10 17:55:05Z karl $
 
 
 % biophysical constants for 1.5 T: 
 %==========================================================================
+
+% hemodynamic parameters
+%--------------------------------------------------------------------------
+%   H(1) - signal decay                                   d(ds/dt)/ds)
+%   H(2) - autoregulation                                 d(ds/dt)/df)
+%   H(3) - transit time                                   (t0)
+%   H(4) - exponent for Fout(v)                           (alpha)
+%   H(5) - resting oxygen extraction                      (E0)
+%   H(6) - ratio of intra- to extra-vascular components   (epsilon)
+%--------------------------------------------------------------------------
+if isstruct(P)
+    H     = [0.64 0.32 2.00 0.32 0.4];
+    for i = 1:numel(P.decay)
+        H(6)   = P.epsilon;
+        y(i,1) = spm_gx_hdm(x(i,:),u(i),H,M);
+    end
+    return
+end
+
 
 % echo time (seconds)
 %--------------------------------------------------------------------------
