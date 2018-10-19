@@ -109,12 +109,12 @@ if overwriteFlag
 			for condition = 1:nConditions % and each condition...
 
 				readPath = replaceWildcards(userOptions.betaPath, '[[betaIdentifier]]', betas(session,condition).identifier, '[[subjectName]]', thisSubject);
-                disp(readPath);
+
                 if strcmp(betaCorrespondence,'SPM')
                     brainMatrix = spm_read_vols(spm_vol(readPath));
                 elseif strcmp(betaCorrespondence,'mat')% if the user uses a mat file with betaImage variable
-                load(readPath);
-                brainMatrix = betaImage;
+                    load(readPath);
+                    brainMatrix = betaImage;
                 else
                     brainMatrix = spm_read_vols(spm_vol(readPath));
                 end
